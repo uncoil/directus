@@ -5,9 +5,17 @@ SHELL=bash
 image=directus-test
 version=$(shell git rev-parse HEAD)
 tag=latest
+<<<<<<< HEAD
+=======
+cmd=
+user=directus
+registry=gcr.io
+repository=uncoil-io/directus
+>>>>>>> 719634f77 (Target linux/amd64 using docker buildx)
 
 .PHONY: build-image test-image
 
+<<<<<<< HEAD
 build-image:
 	pnpm install
 	pnpm -r build
@@ -16,6 +24,16 @@ build-image:
 		--build-arg VERSION=$(version) \
 		--build-arg REPOSITORY=$(image) \
 		-t $(image):$(version) \
+=======
+build-images:
+	npm run build
+	npm run pack
+	docker buildx build --platform linux/amd64 \
+		--build-arg VERSION=$(version) \
+		--build-arg REPOSITORY=$(repository) \
+		--load \
+		-t directus:temp \
+>>>>>>> 719634f77 (Target linux/amd64 using docker buildx)
 		-f ./Dockerfile \
 		..
 	docker tag $(image):$(version) $(image):$(tag)
