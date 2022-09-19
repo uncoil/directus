@@ -14,8 +14,7 @@ RUN \
   && ln -sf /usr/bin/python3 /usr/bin/python \
   ; fi
 
-# Do not install optional dependencies as the necessary ones are already specified in the root package.json
-RUN npm i --only=production --no-package-lock --no-optional
+RUN npm i --only=production --no-package-lock
 RUN rm *.tgz
 
 # Directus image
