@@ -11,8 +11,9 @@ tmp_package_json=$(mktemp)
 .PHONY: build-images
 
 build-images:
-	npm run build
-	npm run pack
+	pnpm install
+	pnpm -r build
+	cd ../; node docker/pack;
 	jq 'del( .dependencies ["sqlite3", "tedious", "mysql", "memcached", "connect-memcached", "keyv-memcache", "nodemailer-mailgun-transport"] )' ../dist/package.json > "$tmp_package_json" && mv "$tmp_package_json" ../dist/package.json
 	docker buildx build --platform linux/amd64 \
 		--build-arg VERSION=$(version) \
