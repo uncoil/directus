@@ -12,13 +12,14 @@ build-image:
 	pnpm install
 	pnpm -r build
 	node pack.js
-	docker build \
+	docker build --platform linux/amd64 \
 		--build-arg VERSION=$(version) \
 		--build-arg REPOSITORY=$(image) \
 		-t $(image):$(version) \
 		-f ./Dockerfile \
 		..
 	docker tag $(image):$(version) $(image):$(tag)
+	docker image rm $(image):$(version)
 
 # To override or pass additional arguments:
 # DOCKER_ARGS='-p 8051:8055 -e LOG_STYLE=raw' make test-image
