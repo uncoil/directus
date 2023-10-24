@@ -173,7 +173,7 @@ export function useItem<T extends Record<string, any>>(
 
 		const fields = collectionInfo.value?.meta?.item_duplication_fields || ['*'];
 
-		const itemData = await api.get(itemEndpoint.value, { params: { fields } });
+		const itemData = await api.post(itemEndpoint.value, { fields });
 
 		const newItem: { [field: string]: any } = {
 			...(itemData.data.data || {}),
