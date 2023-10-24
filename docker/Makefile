@@ -11,7 +11,6 @@ tag=latest
 build-image:
 	pnpm install
 	pnpm -r build
-	node pack.js
 	docker build --platform linux/amd64 \
 		--build-arg VERSION=$(version) \
 		--build-arg REPOSITORY=$(image) \

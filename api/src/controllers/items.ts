@@ -120,7 +120,7 @@ router.post(
 	'/:collection/:pk',
 	collectionExists,
 	asyncHandler(async (req, res, next) => {
-		if (req.params.collection.startsWith('directus_')) throw new ForbiddenException();
+		if (req.params['collection']!.startsWith('directus_')) throw new ForbiddenError();
 
 		const query = req.body ?? { fields: ['*'] };
 
@@ -129,9 +129,9 @@ router.post(
 			schema: req.schema,
 		});
 
-		const result = await service.readOne(req.params.pk, query);
+		const result = await service.readOne(req.params['pk']!, query);
 
-		res.locals.payload = {
+		res.locals['payload'] = {
 			data: result || null,
 		};
 
