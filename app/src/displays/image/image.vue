@@ -1,3 +1,25 @@
+<script setup lang="ts">
+import { computed, ref } from 'vue';
+
+type Image = {
+	id: string;
+	type: string;
+	title: string;
+};
+
+const props = defineProps<{
+	value: Image | null;
+	circle?: boolean;
+}>();
+
+const imageError = ref(false);
+
+const src = computed(() => {
+	if (props.value?.id === null || props.value?.id === undefined) return null;
+	return `/assets/${props.value.id}?key=system-small-cover`;
+});
+</script>
+
 <template>
 	<v-icon v-if="imageError" name="image" />
 	<v-image
@@ -10,39 +32,6 @@
 	/>
 	<value-null v-else />
 </template>
-
-<script lang="ts">
-import { computed, defineComponent, PropType, ref } from 'vue';
-
-type Image = {
-	id: string;
-	type: string;
-	title: string;
-};
-
-export default defineComponent({
-	props: {
-		value: {
-			type: Object as PropType<Image>,
-			default: null,
-		},
-		circle: {
-			type: Boolean,
-			default: false,
-		},
-	},
-	setup(props) {
-		const imageError = ref(false);
-
-		const src = computed(() => {
-			if (props.value?.id === null || props.value?.id === undefined) return null;
-			return `/assets/${props.value.id}?key=system-small-cover`;
-		});
-
-		return { src, imageError };
-	},
-});
-</script>
 
 <style lang="scss" scoped>
 img {

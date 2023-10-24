@@ -1,11 +1,10 @@
 import Joi from 'joi';
-import { InvalidPayloadException } from '../exceptions';
-import { FailedValidationException } from '@directus/shared/exceptions';
-import asyncHandler from '../utils/async-handler';
-import { sanitizeQuery } from '../utils/sanitize-query';
+import { InvalidPayloadError } from '@directus/errors';
+import asyncHandler from '../utils/async-handler.js';
+import { sanitizeQuery } from '../utils/sanitize-query.js';
 
 export const validateBatch = (scope: 'read' | 'update' | 'delete') =>
-	asyncHandler(async (req, res, next) => {
+	asyncHandler(async (req, _res, next) => {
 		if (req.method.toLowerCase() === 'get') {
 			req.body = {};
 			return next();
@@ -15,7 +14,7 @@ export const validateBatch = (scope: 'read' | 'update' | 'delete') =>
 			return next();
 		}
 
-		if (!req.body) throw new InvalidPayloadException('Payload in body is required');
+		if (!req.body) throw new InvalidPayloadError({ reason: 'Payload in body is required' });
 
 		if (['update', 'delete'].includes(scope) && Array.isArray(req.body)) {
 			return next();
@@ -46,7 +45,7 @@ export const validateBatch = (scope: 'read' | 'update' | 'delete') =>
 		const { error } = batchSchema.validate(req.body);
 
 		if (error) {
-			throw new FailedValidationException(error.details[0]);
+			throw new InvalidPayloadError({ reason: error.details[0]!.message });
 		}
 
 		return next();

@@ -1,11 +1,12 @@
-import { SchemaOverview } from '@directus/shared/types';
-import { Knex } from 'knex';
-import { getDatabaseClient } from '..';
+import type { SchemaOverview } from '@directus/types';
+import type { Knex } from 'knex';
+import { getDatabaseClient } from '../index.js';
 
-import * as dateHelpers from './date';
-import * as fnHelpers from './fn';
-import * as geometryHelpers from './geometry';
-import * as schemaHelpers from './schema';
+import * as dateHelpers from './date/index.js';
+import * as fnHelpers from './fn/index.js';
+import * as geometryHelpers from './geometry/index.js';
+import * as schemaHelpers from './schema/index.js';
+import * as sequenceHelpers from './sequence/index.js';
 
 export function getHelpers(database: Knex) {
 	const client = getDatabaseClient(database);
@@ -14,6 +15,7 @@ export function getHelpers(database: Knex) {
 		date: new dateHelpers[client](database),
 		st: new geometryHelpers[client](database),
 		schema: new schemaHelpers[client](database),
+		sequence: new sequenceHelpers[client](database),
 	};
 }
 

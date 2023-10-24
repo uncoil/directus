@@ -1,6 +1,27 @@
+<script setup lang="ts">
+import { useGroupable } from '@directus/composables';
+import { useAppStore } from '@directus/stores';
+import { toRefs } from 'vue';
+
+const props = defineProps<{
+	icon: string;
+	title: string;
+	badge?: boolean | string | number;
+	close?: boolean;
+}>();
+
+const { active, toggle } = useGroupable({
+	value: props.title,
+	group: 'sidebar-detail',
+});
+
+const appStore = useAppStore();
+const { sidebarOpen } = toRefs(appStore);
+</script>
+
 <template>
 	<div class="sidebar-detail" :class="{ open: sidebarOpen }">
-		<button v-tooltip.left="title" class="toggle" :class="{ open: active }" @click="toggle">
+		<button v-tooltip.left="!sidebarOpen && title" class="toggle" :class="{ open: active }" @click="toggle">
 			<div class="icon">
 				<v-badge :dot="badge === true" bordered :value="badge" :disabled="!badge">
 					<v-icon :name="icon" />
@@ -26,56 +47,12 @@
 	</div>
 </template>
 
-<script lang="ts">
-import { defineComponent, toRefs } from 'vue';
-import { useAppStore } from '@/stores/app';
-import { useGroupable } from '@directus/shared/composables';
-
-export default defineComponent({
-	props: {
-		icon: {
-			type: String,
-			required: true,
-		},
-		title: {
-			type: String,
-			required: true,
-		},
-		badge: {
-			type: [Boolean, String, Number],
-			default: null,
-		},
-		close: {
-			type: Boolean,
-			default: false,
-		},
-	},
-	setup(props) {
-		const { active, toggle } = useGroupable({
-			value: props.title,
-			group: 'sidebar-detail',
-		});
-		const appStore = useAppStore();
-		const { sidebarOpen } = toRefs(appStore);
-		return { active, toggle, sidebarOpen };
-	},
-});
-</script>
-
-<style>
-body {
-	--sidebar-detail-icon-color: var(--foreground-normal-alt);
-	--sidebar-detail-color: var(--foreground-normal-alt);
-	--sidebar-detail-color-active: var(--primary);
-}
-</style>
-
 <style lang="scss" scoped>
 .sidebar-detail {
 	--v-badge-offset-x: 3px;
 	--v-badge-offset-y: 4px;
 	--v-badge-border-color: var(--background-normal-alt);
-	--v-badge-background-color: var(--primary);
+	--v-badge-background-color: var(--theme--primary);
 	--v-badge-color: var(--background-normal);
 
 	display: contents;
@@ -92,11 +69,11 @@ body {
 		justify-content: space-between;
 		width: 100%;
 		height: 60px;
-		color: var(--sidebar-detail-color);
-		background-color: var(--background-normal-alt);
+		color: var(--theme--sidebar--section--toggle--foreground);
+		background-color: var(--theme--sidebar--section--toggle--background);
 
 		.icon {
-			--v-icon-color: var(--sidebar-detail-icon-color);
+			--v-icon-color: var(--theme--sidebar--section--toggle--icon--foreground);
 
 			display: flex;
 			align-items: center;
@@ -105,12 +82,21 @@ body {
 			height: 100%;
 		}
 
-		&.open,
 		&:hover {
-			color: var(--sidebar-detail-color-active);
+			color: var(--theme--sidebar--section--toggle--foreground-hover);
+			background-color: var(--theme--sidebar--section--toggle--background-hover);
 
 			.icon {
-				--v-icon-color: var(--sidebar-detail-color-active);
+				--v-icon-color: var(--theme--sidebar--section--toggle--icon--foreground-hover);
+			}
+		}
+
+		&.open {
+			color: var(--theme--sidebar--section--toggle--foreground-active);
+			background-color: var(--theme--sidebar--section--toggle--background-active);
+
+			.icon {
+				--v-icon-color: var(--theme--sidebar--section--toggle--icon--foreground-active);
 			}
 		}
 	}
@@ -125,7 +111,7 @@ body {
 		justify-content: center;
 		width: 60px;
 		height: 60px;
-		color: var(--foreground-normal);
+		color: var(--theme--foreground);
 		cursor: pointer;
 		transition: opacity var(--fast) var(--transition), color var(--fast) var(--transition);
 
@@ -166,16 +152,16 @@ body {
 
 		:deep(.page-description) {
 			margin-bottom: 8px;
-			color: var(--foreground-subdued);
+			color: var(--theme--sidebar--foreground);
 		}
 
 		:deep(.page-description a) {
-			color: var(--primary);
+			color: var(--theme--primary);
 		}
 	}
 
 	.expand-icon {
-		color: var(--foreground-subdued);
+		color: var(--theme--foreground-subdued);
 	}
 }
 </style>

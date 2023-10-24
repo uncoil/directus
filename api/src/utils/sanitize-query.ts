@@ -1,75 +1,90 @@
-import { Accountability, Aggregate, Filter, Query } from '@directus/shared/types';
-import { parseFilter, parseJSON } from '@directus/shared/utils';
-import { flatten, get, isPlainObject, merge, set } from 'lodash';
-import logger from '../logger';
-import { Meta } from '../types';
+import type { Accountability, Aggregate, Filter, Query } from '@directus/types';
+import { parseFilter, parseJSON } from '@directus/utils';
+import { flatten, get, isPlainObject, merge, set } from 'lodash-es';
+import { getEnv } from '../env.js';
+import logger from '../logger.js';
+import { Meta } from '../types/index.js';
 
 export function sanitizeQuery(rawQuery: Record<string, any>, accountability?: Accountability | null): Query {
 	const query: Query = {};
 
-	if (rawQuery.limit !== undefined) {
-		const limit = sanitizeLimit(rawQuery.limit);
+	const env = getEnv();
+
+	const hasMaxLimit =
+		'QUERY_LIMIT_MAX' in env &&
+		Number(env['QUERY_LIMIT_MAX']) >= 0 &&
+		!Number.isNaN(Number(env['QUERY_LIMIT_MAX'])) &&
+		Number.isFinite(Number(env['QUERY_LIMIT_MAX']));
+
+	if (rawQuery['limit'] !== undefined) {
+		const limit = sanitizeLimit(rawQuery['limit']);
 
 		if (typeof limit === 'number') {
-			query.limit = limit;
+			query.limit = limit === -1 && hasMaxLimit ? Number(env['QUERY_LIMIT_MAX']) : limit;
 		}
+	} else if (hasMaxLimit) {
+		query.limit = Math.min(Number(env['QUERY_LIMIT_DEFAULT']), Number(env['QUERY_LIMIT_MAX']));
 	}
 
-	if (rawQuery.fields) {
-		query.fields = sanitizeFields(rawQuery.fields);
+	if (rawQuery['fields']) {
+		query.fields = sanitizeFields(rawQuery['fields']);
 	}
 
-	if (rawQuery.groupBy) {
-		query.group = sanitizeFields(rawQuery.groupBy);
+	if (rawQuery['groupBy']) {
+		query.group = sanitizeFields(rawQuery['groupBy']);
 	}
 
-	if (rawQuery.aggregate) {
-		query.aggregate = sanitizeAggregate(rawQuery.aggregate);
+	if (rawQuery['aggregate']) {
+		query.aggregate = sanitizeAggregate(rawQuery['aggregate']);
 	}
 
-	if (rawQuery.sort) {
-		query.sort = sanitizeSort(rawQuery.sort);
+	if (rawQuery['sort']) {
+		query.sort = sanitizeSort(rawQuery['sort']);
 	}
 
-	if (rawQuery.filter) {
-		query.filter = sanitizeFilter(rawQuery.filter, accountability || null);
+	if (rawQuery['filter']) {
+		query.filter = sanitizeFilter(rawQuery['filter'], accountability || null);
 	}
 
-	if (rawQuery.offset) {
-		query.offset = sanitizeOffset(rawQuery.offset);
+	if (rawQuery['offset'] !== undefined) {
+		query.offset = sanitizeOffset(rawQuery['offset']);
 	}
 
-	if (rawQuery.page) {
-		query.page = sanitizePage(rawQuery.page);
+	if (rawQuery['page']) {
+		query.page = sanitizePage(rawQuery['page']);
 	}
 
-	if (rawQuery.meta) {
-		(query as any).meta = sanitizeMeta(rawQuery.meta);
+	if (rawQuery['meta']) {
+		(query as any).meta = sanitizeMeta(rawQuery['meta']);
 	}
 
-	if (rawQuery.search && typeof rawQuery.search === 'string') {
-		query.search = rawQuery.search;
+	if (rawQuery['search'] && typeof rawQuery['search'] === 'string') {
+		query.search = rawQuery['search'];
 	}
 
-	if (rawQuery.export) {
-		query.export = rawQuery.export as 'json' | 'csv';
+	if (rawQuery['version']) {
+		query.version = rawQuery['version'];
 	}
 
-	if (rawQuery.deep as Record<string, any>) {
+	if (rawQuery['export']) {
+		query.export = rawQuery['export'] as 'json' | 'csv';
+	}
+
+	if (rawQuery['deep'] as Record<string, any>) {
 		if (!query.deep) query.deep = {};
 
-		query.deep = sanitizeDeep(rawQuery.deep, accountability);
+		query.deep = sanitizeDeep(rawQuery['deep'], accountability);
 	}
 
-	if (rawQuery.alias) {
-		query.alias = sanitizeAlias(rawQuery.alias);
+	if (rawQuery['alias']) {
+		query.alias = sanitizeAlias(rawQuery['alias']);
 	}
 
 	return query;
 }
 
 function sanitizeFields(rawFields: any) {
-	if (!rawFields) return;
+	if (!rawFields) return null;
 
 	let fields: string[] = [];
 
@@ -171,20 +186,26 @@ function sanitizeDeep(deep: Record<string, any>, accountability?: Accountability
 	return result;
 
 	function parse(level: Record<string, any>, path: string[] = []) {
+		const subQuery: Record<string, any> = {};
 		const parsedLevel: Record<string, any> = {};
 
 		for (const [key, value] of Object.entries(level)) {
 			if (!key) break;
 
 			if (key.startsWith('_')) {
-				// Sanitize query only accepts non-underscore-prefixed query options
-				const parsedSubQuery = sanitizeQuery({ [key.substring(1)]: value }, accountability);
-				// ...however we want to keep them for the nested structure of deep, otherwise there's no
-				// way of knowing when to keep nesting and when to stop
-				const [parsedKey, parsedValue] = Object.entries(parsedSubQuery)[0];
-				parsedLevel[`_${parsedKey}`] = parsedValue;
+				// Collect all sub query parameters without the leading underscore
+				subQuery[key.substring(1)] = value;
 			} else if (isPlainObject(value)) {
 				parse(value, [...path, key]);
+			}
+		}
+
+		if (Object.keys(subQuery).length > 0) {
+			// Sanitize the entire sub query
+			const parsedSubQuery = sanitizeQuery(subQuery, accountability);
+
+			for (const [parsedKey, parsedValue] of Object.entries(parsedSubQuery)) {
+				parsedLevel[`_${parsedKey}`] = parsedValue;
 			}
 		}
 

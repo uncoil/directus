@@ -1,21 +1,6 @@
-<template>
-	<span
-		class="v-icon"
-		:class="[sizeClass, { 'has-click': !disabled && clickable, left, right }]"
-		:role="clickable ? 'button' : undefined"
-		:tabindex="clickable ? 0 : undefined"
-		:style="{ '--v-icon-color': color }"
-		@click="emitClick"
-	>
-		<component :is="customIconName" v-if="customIconName" />
-		<SocialIcon v-else-if="socialIconName" :name="socialIconName" />
-		<i v-else :class="{ filled }" :data-icon="name"></i>
-	</span>
-</template>
-
 <script setup lang="ts">
 import { computed } from 'vue';
-import { useSizeClass } from '@directus/shared/composables';
+import { useSizeClass } from '@directus/composables';
 import { IconName } from '@fortawesome/fontawesome-svg-core';
 import { camelCase, upperFirst } from 'lodash';
 
@@ -85,6 +70,21 @@ function emitClick(event: MouseEvent) {
 }
 </script>
 
+<template>
+	<span
+		class="v-icon"
+		:class="[sizeClass, { 'has-click': !disabled && clickable, left, right }]"
+		:role="clickable ? 'button' : undefined"
+		:tabindex="clickable ? 0 : undefined"
+		:style="{ '--v-icon-color': color }"
+		@click="emitClick"
+	>
+		<component :is="customIconName" v-if="customIconName" />
+		<SocialIcon v-else-if="socialIconName" :name="socialIconName" />
+		<i v-else :class="{ filled }" :data-icon="name"></i>
+	</span>
+</template>
+
 <style>
 body {
 	--v-icon-color: currentColor;
@@ -106,23 +106,28 @@ body {
 
 	i {
 		display: block;
+		font-family: 'Material Symbols';
 		font-weight: normal;
 		font-size: var(--v-icon-size);
-		font-family: 'Material Icons Outline';
 		font-style: normal;
 		line-height: 1;
 		letter-spacing: normal;
-		white-space: nowrap;
 		text-transform: none;
+		white-space: nowrap;
 		word-wrap: normal;
+		direction: ltr;
+		-webkit-font-smoothing: antialiased;
+		-moz-osx-font-smoothing: grayscale;
+		text-rendering: optimizeLegibility;
 		font-feature-settings: 'liga';
+		font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
 
 		&::after {
 			content: attr(data-icon);
 		}
 
 		&.filled {
-			font-family: 'Material Icons';
+			font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
 		}
 	}
 
@@ -173,7 +178,6 @@ body {
 
 		&.small {
 			margin-right: 4px;
-			margin-left: -2px;
 		}
 	}
 
@@ -181,8 +185,7 @@ body {
 		margin-left: 6px;
 
 		&.small {
-			margin-right: 4px;
-			margin-left: -2px;
+			margin-left: 4px;
 		}
 	}
 }

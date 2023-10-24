@@ -1,28 +1,29 @@
-import SchemaInspector from '@directus/schema';
-import { REGEX_BETWEEN_PARENS } from '@directus/shared/constants';
-import { Accountability, Field, FieldMeta, RawField, SchemaOverview, Type } from '@directus/shared/types';
-import { addFieldFlag, toArray } from '@directus/shared/utils';
-import Keyv from 'keyv';
-import { Knex } from 'knex';
-import { Column } from 'knex-schema-inspector/dist/types/column';
-import { isEqual, isNil } from 'lodash';
-import { clearSystemCache, getCache } from '../cache';
-import { ALIAS_TYPES } from '../constants';
-import getDatabase, { getSchemaInspector } from '../database';
-import { getHelpers, Helpers } from '../database/helpers';
-import { systemFieldRows } from '../database/system-data/fields/';
-import emitter from '../emitter';
-import env from '../env';
-import { ForbiddenException, InvalidPayloadException } from '../exceptions';
-import { translateDatabaseError } from '../exceptions/database/translate';
-import { ItemsService } from '../services/items';
-import { PayloadService } from '../services/payload';
-import { AbstractServiceOptions, ActionEventParams, MutationOptions } from '../types';
-import getDefaultValue from '../utils/get-default-value';
-import getLocalType from '../utils/get-local-type';
-import { RelationsService } from './relations';
-import { KNEX_TYPES } from '@directus/shared/constants';
-import { getSchema } from '../utils/get-schema';
+import { KNEX_TYPES, REGEX_BETWEEN_PARENS } from '@directus/constants';
+import type { Column, SchemaInspector } from '@directus/schema';
+import { createInspector } from '@directus/schema';
+import type { Accountability, Field, FieldMeta, RawField, SchemaOverview, Type } from '@directus/types';
+import { addFieldFlag, toArray } from '@directus/utils';
+import type Keyv from 'keyv';
+import type { Knex } from 'knex';
+import { isEqual, isNil, merge } from 'lodash-es';
+import { clearSystemCache, getCache } from '../cache.js';
+import { ALIAS_TYPES } from '../constants.js';
+import { translateDatabaseError } from '../database/errors/translate.js';
+import type { Helpers } from '../database/helpers/index.js';
+import { getHelpers } from '../database/helpers/index.js';
+import getDatabase, { getSchemaInspector } from '../database/index.js';
+import { systemFieldRows } from '../database/system-data/fields/index.js';
+import emitter from '../emitter.js';
+import { ForbiddenError, InvalidPayloadError } from '@directus/errors';
+import { ItemsService } from './items.js';
+import { PayloadService } from './payload.js';
+import type { AbstractServiceOptions, ActionEventParams, MutationOptions } from '../types/index.js';
+import getDefaultValue from '../utils/get-default-value.js';
+import getLocalType from '../utils/get-local-type.js';
+import { getSchema } from '../utils/get-schema.js';
+import { sanitizeColumn } from '../utils/sanitize-schema.js';
+import { shouldClearCache } from '../utils/should-clear-cache.js';
+import { RelationsService } from './relations.js';
 
 export class FieldsService {
 	knex: Knex;
@@ -30,7 +31,7 @@ export class FieldsService {
 	accountability: Accountability | null;
 	itemsService: ItemsService;
 	payloadService: PayloadService;
-	schemaInspector: ReturnType<typeof SchemaInspector>;
+	schemaInspector: SchemaInspector;
 	schema: SchemaOverview;
 	cache: Keyv<any> | null;
 	systemCache: Keyv<any>;
@@ -38,7 +39,7 @@ export class FieldsService {
 	constructor(options: AbstractServiceOptions) {
 		this.knex = options.knex || getDatabase();
 		this.helpers = getHelpers(this.knex);
-		this.schemaInspector = options.knex ? SchemaInspector(options.knex) : getSchemaInspector();
+		this.schemaInspector = options.knex ? createInspector(options.knex) : getSchemaInspector();
 		this.accountability = options.accountability || null;
 		this.itemsService = new ItemsService('directus_fields', options);
 		this.payloadService = new PayloadService('directus_fields', options);
@@ -60,7 +61,7 @@ export class FieldsService {
 		let fields: FieldMeta[];
 
 		if (this.accountability && this.accountability.admin !== true && this.hasReadAccess === false) {
-			throw new ForbiddenException();
+			throw new ForbiddenError();
 		}
 
 		const nonAuthorizedItemsService = new ItemsService('directus_fields', {
@@ -82,7 +83,10 @@ export class FieldsService {
 
 		const columns = (await this.schemaInspector.columnInfo(collection)).map((column) => ({
 			...column,
-			default_value: getDefaultValue(column),
+			default_value: getDefaultValue(
+				column,
+				fields.find((field) => field.collection === column.table && field.field === column.name)
+			),
 		}));
 
 		const columnsWithSystem = columns.map((column) => {
@@ -160,12 +164,12 @@ export class FieldsService {
 			});
 
 			if (collection && collection in allowedFieldsInCollection === false) {
-				throw new ForbiddenException();
+				throw new ForbiddenError();
 			}
 
 			return result.filter((field) => {
 				if (field.collection in allowedFieldsInCollection === false) return false;
-				const allowedFields = allowedFieldsInCollection[field.collection];
+				const allowedFields = allowedFieldsInCollection[field.collection]!;
 				if (allowedFields[0] === '*') return true;
 				return allowedFields.includes(field.field);
 			});
@@ -178,6 +182,8 @@ export class FieldsService {
 			} else if (field.meta?.special?.includes('cast-datetime')) {
 				field.type = 'dateTime';
 			}
+
+			field.type = this.helpers.schema.processFieldType(field);
 		}
 
 		return result;
@@ -186,17 +192,18 @@ export class FieldsService {
 	async readOne(collection: string, field: string): Promise<Record<string, any>> {
 		if (this.accountability && this.accountability.admin !== true) {
 			if (this.hasReadAccess === false) {
-				throw new ForbiddenException();
+				throw new ForbiddenError();
 			}
 
 			const permissions = this.accountability.permissions!.find((permission) => {
 				return permission.action === 'read' && permission.collection === collection;
 			});
 
-			if (!permissions || !permissions.fields) throw new ForbiddenException();
+			if (!permissions || !permissions.fields) throw new ForbiddenError();
+
 			if (permissions.fields.includes('*') === false) {
 				const allowedFields = permissions.fields;
-				if (allowedFields.includes(field) === false) throw new ForbiddenException();
+				if (allowedFields.includes(field) === false) throw new ForbiddenError();
 			}
 		}
 
@@ -217,14 +224,14 @@ export class FieldsService {
 			// Do nothing
 		}
 
-		if (!column && !fieldInfo) throw new ForbiddenException();
+		if (!column && !fieldInfo) throw new ForbiddenError();
 
 		const type = getLocalType(column, fieldInfo);
 
 		const columnWithCastDefaultValue = column
 			? {
 					...column,
-					default_value: getDefaultValue(column),
+					default_value: getDefaultValue(column, fieldInfo),
 			  }
 			: null;
 
@@ -246,7 +253,7 @@ export class FieldsService {
 		opts?: MutationOptions
 	): Promise<void> {
 		if (this.accountability && this.accountability.admin !== true) {
-			throw new ForbiddenException();
+			throw new ForbiddenError();
 		}
 
 		const runPostColumnChange = await this.helpers.schema.preColumnChange();
@@ -254,18 +261,21 @@ export class FieldsService {
 
 		try {
 			const exists =
-				field.field in this.schema.collections[collection].fields ||
+				field.field in this.schema.collections[collection]!.fields ||
 				isNil(
 					await this.knex.select('id').from('directus_fields').where({ collection, field: field.field }).first()
 				) === false;
 
 			// Check if field already exists, either as a column, or as a row in directus_fields
 			if (exists) {
-				throw new InvalidPayloadException(`Field "${field.field}" already exists in collection "${collection}"`);
+				throw new InvalidPayloadError({
+					reason: `Field "${field.field}" already exists in collection "${collection}"`,
+				});
 			}
 
 			// Add flag for specific database type overrides
 			const flagToAdd = this.helpers.date.fieldFlagForField(field.type);
+
 			if (flagToAdd) {
 				addFieldFlag(field, flagToAdd);
 			}
@@ -301,9 +311,17 @@ export class FieldsService {
 				}
 
 				if (hookAdjustedField.meta) {
+					const existingSortRecord: Record<'max', number | null> | undefined = await trx
+						.from('directus_fields')
+						.where(hookAdjustedField.meta?.group ? { collection, group: hookAdjustedField.meta.group } : { collection })
+						.max('sort', { as: 'max' })
+						.first();
+
+					const newSortValue: number = existingSortRecord?.max ? existingSortRecord.max + 1 : 1;
+
 					await itemsService.createOne(
 						{
-							...hookAdjustedField.meta,
+							...merge({ sort: newSortValue }, hookAdjustedField.meta),
 							collection: collection,
 							field: hookAdjustedField.field,
 						},
@@ -336,12 +354,12 @@ export class FieldsService {
 				await this.helpers.schema.postColumnChange();
 			}
 
-			if (this.cache && env.CACHE_AUTO_PURGE && opts?.autoPurgeCache !== false) {
+			if (shouldClearCache(this.cache, opts)) {
 				await this.cache.clear();
 			}
 
 			if (opts?.autoPurgeSystemCache !== false) {
-				await clearSystemCache();
+				await clearSystemCache({ autoPurgeCache: opts?.autoPurgeCache });
 			}
 
 			if (opts?.emitEvents !== false && nestedActionEvents.length > 0) {
@@ -357,7 +375,7 @@ export class FieldsService {
 
 	async updateField(collection: string, field: RawField, opts?: MutationOptions): Promise<string> {
 		if (this.accountability && this.accountability.admin !== true) {
-			throw new ForbiddenException();
+			throw new ForbiddenError();
 		}
 
 		const runPostColumnChange = await this.helpers.schema.preColumnChange();
@@ -385,16 +403,20 @@ export class FieldsService {
 			if (
 				hookAdjustedField.type &&
 				(hookAdjustedField.type === 'alias' ||
-					this.schema.collections[collection].fields[field.field]?.type === 'alias') &&
-				hookAdjustedField.type !== (this.schema.collections[collection].fields[field.field]?.type ?? 'alias')
+					this.schema.collections[collection]!.fields[field.field]?.type === 'alias') &&
+				hookAdjustedField.type !== (this.schema.collections[collection]!.fields[field.field]?.type ?? 'alias')
 			) {
-				throw new InvalidPayloadException('Alias type cannot be changed');
+				throw new InvalidPayloadError({ reason: 'Alias type cannot be changed' });
 			}
 
 			if (hookAdjustedField.schema) {
 				const existingColumn = await this.schemaInspector.columnInfo(collection, hookAdjustedField.field);
 
-				if (!isEqual(existingColumn, hookAdjustedField.schema)) {
+				// Sanitize column only when applying snapshot diff as opts is only passed from /utils/apply-diff.ts
+				const columnToCompare =
+					opts?.bypassLimits && opts.autoPurgeSystemCache === false ? sanitizeColumn(existingColumn) : existingColumn;
+
+				if (!isEqual(columnToCompare, hookAdjustedField.schema)) {
 					try {
 						await this.knex.schema.alterTable(collection, (table) => {
 							if (!hookAdjustedField.schema) return;
@@ -455,12 +477,12 @@ export class FieldsService {
 				await this.helpers.schema.postColumnChange();
 			}
 
-			if (this.cache && env.CACHE_AUTO_PURGE && opts?.autoPurgeCache !== false) {
+			if (shouldClearCache(this.cache, opts)) {
 				await this.cache.clear();
 			}
 
 			if (opts?.autoPurgeSystemCache !== false) {
-				await clearSystemCache();
+				await clearSystemCache({ autoPurgeCache: opts?.autoPurgeCache });
 			}
 
 			if (opts?.emitEvents !== false && nestedActionEvents.length > 0) {
@@ -476,7 +498,7 @@ export class FieldsService {
 
 	async deleteField(collection: string, field: string, opts?: MutationOptions): Promise<void> {
 		if (this.accountability && this.accountability.admin !== true) {
-			throw new ForbiddenException();
+			throw new ForbiddenError();
 		}
 
 		const runPostColumnChange = await this.helpers.schema.preColumnChange();
@@ -553,8 +575,8 @@ export class FieldsService {
 				// Delete field only after foreign key constraints are removed
 				if (
 					this.schema.collections[collection] &&
-					field in this.schema.collections[collection].fields &&
-					this.schema.collections[collection].fields[field].alias === false
+					field in this.schema.collections[collection]!.fields &&
+					this.schema.collections[collection]!.fields[field]!.alias === false
 				) {
 					await trx.schema.table(collection, (table) => {
 						table.dropColumn(field);
@@ -570,11 +592,11 @@ export class FieldsService {
 				const collectionMetaUpdates: Record<string, null> = {};
 
 				if (collectionMeta?.archive_field === field) {
-					collectionMetaUpdates.archive_field = null;
+					collectionMetaUpdates['archive_field'] = null;
 				}
 
 				if (collectionMeta?.sort_field === field) {
-					collectionMetaUpdates.sort_field = null;
+					collectionMetaUpdates['sort_field'] = null;
 				}
 
 				if (Object.keys(collectionMetaUpdates).length > 0) {
@@ -621,12 +643,12 @@ export class FieldsService {
 				await this.helpers.schema.postColumnChange();
 			}
 
-			if (this.cache && env.CACHE_AUTO_PURGE && opts?.autoPurgeCache !== false) {
+			if (shouldClearCache(this.cache, opts)) {
 				await this.cache.clear();
 			}
 
 			if (opts?.autoPurgeSystemCache !== false) {
-				await clearSystemCache();
+				await clearSystemCache({ autoPurgeCache: opts?.autoPurgeCache });
 			}
 
 			if (opts?.emitEvents !== false && nestedActionEvents.length > 0) {
@@ -648,7 +670,6 @@ export class FieldsService {
 
 		if (field.schema?.has_auto_increment) {
 			if (field.type === 'bigInteger') {
-				// Create an auto-incremented big integer (MySQL, PostgreSQL) or an auto-incremented integer (other DBs)
 				column = table.bigIncrements(field.field);
 			} else {
 				column = table.increments(field.field);
@@ -659,7 +680,7 @@ export class FieldsService {
 			const type = field.type as 'float' | 'decimal';
 			column = table[type](field.field, field.schema?.numeric_precision ?? 10, field.schema?.numeric_scale ?? 5);
 		} else if (field.type === 'csv') {
-			column = table.string(field.field);
+			column = table.text(field.field);
 		} else if (field.type === 'hash') {
 			column = table.string(field.field, 255);
 		} else if (field.type === 'dateTime') {
@@ -668,10 +689,10 @@ export class FieldsService {
 			column = table.timestamp(field.field, { useTz: true });
 		} else if (field.type.startsWith('geometry')) {
 			column = this.helpers.st.createColumn(table, field);
-		} else if (KNEX_TYPES.includes(field.type as typeof KNEX_TYPES[number])) {
-			column = table[field.type as typeof KNEX_TYPES[number]](field.field);
+		} else if (KNEX_TYPES.includes(field.type as (typeof KNEX_TYPES)[number])) {
+			column = table[field.type as (typeof KNEX_TYPES)[number]](field.field);
 		} else {
-			throw new InvalidPayloadException(`Illegal type passed: "${field.type}"`);
+			throw new InvalidPayloadError({ reason: `Illegal type passed: "${field.type}"` });
 		}
 
 		if (field.schema?.default_value !== undefined) {

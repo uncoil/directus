@@ -1,104 +1,13 @@
-<template>
-	<div class="v-table" :class="{ loading, inline, disabled }">
-		<table :summary="internalHeaders.map((header) => header.text).join(', ')">
-			<table-header
-				v-model:headers="internalHeaders"
-				v-model:sort="internalSort"
-				v-model:reordering="reordering"
-				:show-select="showSelect"
-				:show-resize="showResize"
-				:some-items-selected="someItemsSelected"
-				:all-items-selected="allItemsSelected"
-				:fixed="fixedHeader"
-				:show-manual-sort="showManualSort"
-				:must-sort="mustSort"
-				:has-item-append-slot="hasItemAppendSlot"
-				:manual-sort-key="manualSortKey"
-				:allow-header-reorder="allowHeaderReorder"
-				@toggle-select-all="onToggleSelectAll"
-			>
-				<template v-for="header in internalHeaders" #[`header.${header.value}`]>
-					<slot :header="header" :name="`header.${header.value}`" />
-				</template>
-
-				<template v-if="hasHeaderAppendSlot" #header-append>
-					<slot name="header-append" />
-				</template>
-
-				<template v-if="hasHeaderContextMenuSlot" #header-context-menu="{ header }">
-					<slot name="header-context-menu" v-bind="{ header }" />
-				</template>
-			</table-header>
-			<thead v-if="loading" class="loading-indicator" :class="{ sticky: fixedHeader }">
-				<th scope="colgroup" :style="{ gridColumn: fullColSpan }">
-					<v-progress-linear v-if="loading" indeterminate />
-				</th>
-			</thead>
-			<tbody v-if="loading && items.length === 0">
-				<tr class="loading-text">
-					<td :style="{ gridColumn: fullColSpan }">{{ loadingText }}</td>
-				</tr>
-			</tbody>
-			<tbody v-if="!loading && items.length === 0">
-				<tr class="no-items-text">
-					<td :style="{ gridColumn: fullColSpan }">{{ noItemsText }}</td>
-				</tr>
-			</tbody>
-			<draggable
-				v-else
-				v-model="internalItems"
-				:force-fallback="true"
-				:item-key="itemKey"
-				tag="tbody"
-				handle=".drag-handle"
-				:disabled="disabled || internalSort.by !== manualSortKey"
-				:set-data="hideDragImage"
-				@end="onSortChange"
-			>
-				<template #item="{ element }">
-					<table-row
-						:headers="internalHeaders"
-						:item="element"
-						:show-select="!disabled && showSelect"
-						:show-manual-sort="!disabled && showManualSort"
-						:is-selected="getSelectedState(element)"
-						:subdued="loading || reordering"
-						:sorted-manually="internalSort.by === manualSortKey"
-						:has-click-listener="!disabled && clickable"
-						:height="rowHeight"
-						@click="clickable ? $emit('click:row', { item: element, event: $event }) : null"
-						@item-selected="
-							onItemSelected({
-								item: element,
-								value: !getSelectedState(element),
-							})
-						"
-					>
-						<template v-for="header in internalHeaders" #[`item.${header.value}`]>
-							<slot :item="element" :name="`item.${header.value}`" />
-						</template>
-
-						<template v-if="hasItemAppendSlot" #item-append>
-							<slot name="item-append" :item="element" />
-						</template>
-					</table-row>
-				</template>
-			</draggable>
-		</table>
-		<slot name="footer" />
-	</div>
-</template>
-
-<script lang="ts" setup>
+<script setup lang="ts">
+import { i18n } from '@/lang/';
+import { hideDragImage } from '@/utils/hide-drag-image';
+import { ShowSelect } from '@directus/types';
+import { clone, forEach, pick } from 'lodash';
 import { computed, ref, useSlots } from 'vue';
-import { ShowSelect } from '@directus/shared/types';
-import { Header, HeaderRaw, Item, ItemSelectEvent, Sort } from './types';
+import Draggable from 'vuedraggable';
 import TableHeader from './table-header.vue';
 import TableRow from './table-row.vue';
-import { sortBy, clone, forEach, pick } from 'lodash';
-import { i18n } from '@/lang/';
-import Draggable from 'vuedraggable';
-import { hideDragImage } from '@/utils/hide-drag-image';
+import { Header, HeaderRaw, Item, ItemSelectEvent, Sort } from './types';
 
 const HeaderDefaults: Header = {
 	text: '',
@@ -106,6 +15,7 @@ const HeaderDefaults: Header = {
 	align: 'left',
 	sortable: true,
 	width: null,
+	description: null,
 };
 
 interface Props {
@@ -124,7 +34,6 @@ interface Props {
 	loading?: boolean;
 	loadingText?: string;
 	noItemsText?: string;
-	serverSort?: boolean;
 	rowHeight?: number;
 	selectionUseKeys?: boolean;
 	inline?: boolean;
@@ -146,7 +55,6 @@ const props = withDefaults(defineProps<Props>(), {
 	loading: false,
 	loadingText: i18n.global.t('loading'),
 	noItemsText: i18n.global.t('no_items'),
-	serverSort: false,
 	rowHeight: 48,
 	selectionUseKeys: false,
 	inline: false,
@@ -204,19 +112,14 @@ const internalHeaders = computed({
 });
 
 // In case the sort prop isn't used, we'll use this local sort state as a fallback.
-// This allows the table to allow inline sorting on column ootb without the need for
-const internalLocalSort = ref<Sort>({
-	by: null,
-	desc: false,
-});
-
-const internalSort = computed({
-	get: () => props.sort || internalLocalSort.value,
-	set: (newSort: Sort) => {
-		emit('update:sort', newSort);
-		internalLocalSort.value = newSort;
-	},
-});
+// This allows the table to allow inline sorting on column out of the box without the need for
+const internalSort = computed<Sort>(
+	() =>
+		props.sort ?? {
+			by: null,
+			desc: false,
+		}
+);
 
 const reordering = ref<boolean>(false);
 
@@ -235,15 +138,7 @@ const fullColSpan = computed<string>(() => {
 
 const internalItems = computed({
 	get: () => {
-		if (props.serverSort === true || internalSort.value.by === props.manualSortKey) {
-			return props.items;
-		}
-
-		if (internalSort.value.by === null) return props.items;
-
-		const itemsSorted = sortBy(props.items, [internalSort.value.by]);
-		if (internalSort.value.desc === true) return itemsSorted.reverse();
-		return itemsSorted;
+		return props.items;
 	},
 	set: (value: Item[]) => {
 		emit('update:items', value);
@@ -251,14 +146,14 @@ const internalItems = computed({
 });
 
 const allItemsSelected = computed<boolean>(() => {
-	return props.loading === false && props.modelValue.length === props.items.length;
+	return props.loading === false && props.items.length > 0 && props.modelValue.length === props.items.length;
 });
 
 const someItemsSelected = computed<boolean>(() => {
 	return props.modelValue.length > 0 && allItemsSelected.value === false;
 });
 
-const columnStyle = computed<string>(() => {
+const columnStyle = computed<{ header: string; rows: string }>(() => {
 	return {
 		header: generate('auto'),
 		rows: generate(),
@@ -305,6 +200,10 @@ function onItemSelected(event: ItemSelectEvent) {
 		});
 	}
 
+	if (props.showSelect === 'one') {
+		selection = selection.slice(-1);
+	}
+
 	emit('update:modelValue', selection);
 }
 
@@ -312,6 +211,7 @@ function getSelectedState(item: Item) {
 	const selectedKeys = props.selectionUseKeys
 		? props.modelValue
 		: props.modelValue.map((item: any) => item[props.itemKey]);
+
 	return selectedKeys.includes(item[props.itemKey]);
 }
 
@@ -345,14 +245,110 @@ function onSortChange(event: EndEvent) {
 
 	emit('manual-sort', { item, to });
 }
+
+function updateSort(newSort: Sort) {
+	emit('update:sort', newSort?.by ? newSort : null);
+}
 </script>
+
+<template>
+	<div class="v-table" :class="{ loading, inline, disabled }">
+		<table :summary="internalHeaders.map((header) => header.text).join(', ')">
+			<table-header
+				v-model:headers="internalHeaders"
+				v-model:reordering="reordering"
+				:sort="internalSort"
+				:show-select="showSelect"
+				:show-resize="showResize"
+				:some-items-selected="someItemsSelected"
+				:all-items-selected="allItemsSelected"
+				:fixed="fixedHeader"
+				:show-manual-sort="showManualSort"
+				:must-sort="mustSort"
+				:has-item-append-slot="hasItemAppendSlot"
+				:manual-sort-key="manualSortKey"
+				:allow-header-reorder="allowHeaderReorder"
+				@toggle-select-all="onToggleSelectAll"
+				@update:sort="updateSort"
+			>
+				<template v-for="header in internalHeaders" #[`header.${header.value}`]>
+					<slot :header="header" :name="`header.${header.value}`" />
+				</template>
+
+				<template v-if="hasHeaderAppendSlot" #header-append>
+					<slot name="header-append" />
+				</template>
+
+				<template v-if="hasHeaderContextMenuSlot" #header-context-menu="{ header }">
+					<slot name="header-context-menu" v-bind="{ header }" />
+				</template>
+			</table-header>
+			<thead v-if="loading" class="loading-indicator" :class="{ sticky: fixedHeader }">
+				<th scope="colgroup" :style="{ gridColumn: fullColSpan }">
+					<v-progress-linear v-if="loading" indeterminate />
+				</th>
+			</thead>
+			<tbody v-if="loading && items.length === 0">
+				<tr class="loading-text">
+					<td :style="{ gridColumn: fullColSpan }">{{ loadingText }}</td>
+				</tr>
+			</tbody>
+			<tbody v-if="!loading && items.length === 0">
+				<tr class="no-items-text">
+					<td :style="{ gridColumn: fullColSpan }">{{ noItemsText }}</td>
+				</tr>
+			</tbody>
+			<draggable
+				v-else
+				v-model="internalItems"
+				force-fallback
+				:item-key="itemKey"
+				tag="tbody"
+				handle=".drag-handle"
+				:disabled="disabled || internalSort.by !== manualSortKey"
+				:set-data="hideDragImage"
+				@end="onSortChange"
+			>
+				<template #item="{ element }">
+					<table-row
+						:headers="internalHeaders"
+						:item="element"
+						:show-select="disabled ? 'none' : showSelect"
+						:show-manual-sort="!disabled && showManualSort"
+						:is-selected="getSelectedState(element)"
+						:subdued="loading || reordering"
+						:sorted-manually="internalSort.by === manualSortKey"
+						:has-click-listener="!disabled && clickable"
+						:height="rowHeight"
+						@click="!disabled && clickable ? $emit('click:row', { item: element, event: $event }) : null"
+						@item-selected="
+							onItemSelected({
+								item: element,
+								value: !getSelectedState(element),
+							})
+						"
+					>
+						<template v-for="header in internalHeaders" #[`item.${header.value}`]>
+							<slot :item="element" :name="`item.${header.value}`" />
+						</template>
+
+						<template v-if="hasItemAppendSlot" #item-append>
+							<slot name="item-append" :item="element" />
+						</template>
+					</table-row>
+				</template>
+			</draggable>
+		</table>
+		<slot name="footer" />
+	</div>
+</template>
 
 <style scoped>
 :global(body) {
 	--v-table-height: auto;
 	--v-table-sticky-offset-top: 0;
-	--v-table-color: var(--foreground-normal);
-	--v-table-background-color: var(--background-input);
+	--v-table-color: var(--theme--foreground);
+	--v-table-background-color: var(--theme--form--field--input--background);
 }
 
 .v-table {
@@ -454,13 +450,13 @@ table :deep(.sortable-ghost .cell) {
 .loading-text,
 .no-items-text {
 	text-align: center;
-	background-color: var(--background-input);
+	background-color: var(--theme--form--field--input--background);
 }
 
 .loading-text td,
 .no-items-text td {
 	padding: 16px;
-	color: var(--foreground-subdued);
+	color: var(--theme--foreground-subdued);
 }
 
 .inline {
@@ -473,7 +469,7 @@ table :deep(.sortable-ghost .cell) {
 }
 
 .disabled {
-	--v-table-color: var(--foreground-subdued);
+	--v-table-color: var(--theme--foreground-subdued);
 	--v-table-background-color: var(--background-subdued);
 }
 </style>

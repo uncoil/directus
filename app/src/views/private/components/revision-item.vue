@@ -1,3 +1,55 @@
+<script setup lang="ts">
+import { Revision } from '@/types/revisions';
+import { userName } from '@/utils/user-name';
+import { format } from 'date-fns';
+import { computed } from 'vue';
+import { useI18n } from 'vue-i18n';
+
+const props = defineProps<{
+	revision: Revision;
+	last?: boolean;
+}>();
+
+defineEmits<{
+	(e: 'click'): void;
+}>();
+
+const { t } = useI18n();
+
+const revisionCount = computed(() => {
+	return Object.keys(props.revision.delta).length;
+});
+
+const headerMessage = computed(() => {
+	switch (props.revision.activity.action.toLowerCase()) {
+		case 'create':
+			return t('revision_delta_created');
+		case 'update':
+			return t('revision_delta_updated', revisionCount.value);
+		case 'delete':
+			return t('revision_delta_deleted');
+		case 'version_save':
+			return t('revision_delta_version_saved', revisionCount.value);
+		case 'revert':
+			return t('revision_delta_reverted');
+		default:
+			return t('revision_delta_other');
+	}
+});
+
+const time = computed(() => {
+	return format(new Date(props.revision.activity.timestamp), String(t('date-fns_time')));
+});
+
+const user = computed(() => {
+	if (props.revision?.activity?.user && typeof props.revision.activity.user === 'object') {
+		return userName(props.revision.activity.user);
+	}
+
+	return t('private_user');
+});
+</script>
+
 <template>
 	<div class="revision-item" :class="{ last }" @click="$emit('click')">
 		<div class="header">
@@ -7,7 +59,11 @@
 		<div class="content">
 			<span class="time">{{ time }}</span>
 			–
-			<user-popover v-if="revision.activity.user" class="user" :user="revision.activity.user.id">
+			<user-popover
+				v-if="revision.activity.user"
+				class="user"
+				:user="typeof revision.activity.user === 'string' ? revision.activity.user : revision.activity.user.id"
+			>
 				<span>{{ user }}</span>
 			</user-popover>
 
@@ -15,64 +71,6 @@
 		</div>
 	</div>
 </template>
-
-<script lang="ts">
-import { useI18n } from 'vue-i18n';
-import { defineComponent, PropType, computed } from 'vue';
-import { Revision } from './types';
-import { format } from 'date-fns';
-import { userName } from '@/utils/user-name';
-
-export default defineComponent({
-	props: {
-		revision: {
-			type: Object as PropType<Revision>,
-			required: true,
-		},
-		last: {
-			type: Boolean,
-			default: false,
-		},
-	},
-	emits: ['click'],
-	setup(props) {
-		const { t } = useI18n();
-
-		const revisionCount = computed(() => {
-			return Object.keys(props.revision.delta).length;
-		});
-
-		const headerMessage = computed(() => {
-			switch (props.revision.activity.action.toLowerCase()) {
-				case 'create':
-					return t('revision_delta_created');
-				case 'update':
-					return t('revision_delta_updated', revisionCount.value);
-				case 'delete':
-					return t('revision_delta_deleted');
-				case 'revert':
-					return t('revision_delta_reverted');
-				default:
-					return t('revision_delta_other');
-			}
-		});
-
-		const time = computed(() => {
-			return format(new Date(props.revision.activity.timestamp), String(t('date-fns_time')));
-		});
-
-		const user = computed(() => {
-			if (props.revision?.activity?.user && typeof props.revision.activity.user === 'object') {
-				return userName(props.revision.activity.user);
-			}
-
-			return t('private_user');
-		});
-
-		return { t, headerMessage, time, user };
-	},
-});
-</script>
 
 <style lang="scss" scoped>
 .revision-item {
@@ -92,20 +90,24 @@ export default defineComponent({
 			z-index: 2;
 			width: 12px;
 			height: 12px;
-			background-color: var(--warning);
+			background-color: var(--theme--warning);
 			border: 2px solid var(--background-normal);
 			border-radius: 8px;
 
 			&.create {
-				background-color: var(--primary);
+				background-color: var(--theme--primary);
 			}
 
 			&.update {
-				background-color: var(--primary);
+				background-color: var(--theme--primary);
+			}
+
+			&.version_save {
+				background-color: var(--theme--primary);
 			}
 
 			&.delete {
-				background-color: var(--danger);
+				background-color: var(--theme--danger);
 			}
 		}
 	}
@@ -158,7 +160,7 @@ export default defineComponent({
 .content {
 	position: relative;
 	z-index: 2;
-	color: var(--foreground-subdued);
+	color: var(--theme--foreground-subdued);
 	line-height: 16px;
 
 	.time {
@@ -173,7 +175,7 @@ export default defineComponent({
 		}
 
 		&:hover {
-			color: var(--foreground-normal);
+			color: var(--theme--foreground);
 		}
 	}
 }

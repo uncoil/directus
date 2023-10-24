@@ -1,15 +1,9 @@
-<template>
-	<div ref="wrapper" class="v-date-picker">
-		<input class="input" type="text" data-input />
-	</div>
-</template>
-
 <script setup lang="ts">
-import { useI18n } from 'vue-i18n';
-import { ref, onMounted, onBeforeUnmount, computed, watch } from 'vue';
-import Flatpickr from 'flatpickr';
-import { format, formatISO } from 'date-fns';
 import { getFlatpickrLocale } from '@/utils/get-flatpickr-locale';
+import { format, formatISO } from 'date-fns';
+import Flatpickr from 'flatpickr';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
 
 interface Props {
 	type: 'date' | 'time' | 'dateTime' | 'timestamp';
@@ -36,7 +30,7 @@ let flatpickr: Flatpickr.Instance | null;
 onMounted(async () => {
 	if (wrapper.value) {
 		const flatpickrLocale = await getFlatpickrLocale();
-		flatpickr = Flatpickr(wrapper.value, { ...flatpickrOptions.value, locale: flatpickrLocale } as any);
+		flatpickr = Flatpickr(wrapper.value as Node, { ...flatpickrOptions.value, locale: flatpickrLocale } as any);
 	}
 
 	watch(
@@ -137,6 +131,12 @@ function enterToClose(e: any) {
 	emit('close');
 }
 </script>
+
+<template>
+	<div ref="wrapper" class="v-date-picker">
+		<input class="input" type="text" data-input />
+	</div>
+</template>
 
 <style lang="scss" scoped>
 .v-date-picker {

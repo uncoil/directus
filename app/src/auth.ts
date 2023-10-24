@@ -1,10 +1,10 @@
 import api from '@/api';
+import { DEFAULT_AUTH_PROVIDER } from '@/constants';
 import { dehydrate, hydrate } from '@/hydrate';
 import { router } from '@/router';
-import { useAppStore } from '@/stores/app';
+import { useAppStore } from '@directus/stores';
 import { RouteLocationRaw } from 'vue-router';
 import { idleTracker } from './idle';
-import { DEFAULT_AUTH_PROVIDER } from '@/constants';
 
 type LoginCredentials = {
 	identifier?: string;
@@ -170,7 +170,11 @@ export async function logout(optionsRaw: LogoutOptions = {}): Promise<void> {
 
 	// Only if the user manually signed out should we kill the session by hitting the logout endpoint
 	if (options.reason === LogoutReason.SIGN_OUT) {
-		await api.post(`/auth/logout`);
+		try {
+			await api.post(`/auth/logout`);
+		} catch {
+			// User already signed out
+		}
 	}
 
 	appStore.authenticated = false;

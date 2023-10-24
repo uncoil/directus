@@ -1,27 +1,6 @@
-<template>
-	<component
-		:is="customValue ? 'div' : 'button'"
-		class="v-checkbox"
-		type="button"
-		role="checkbox"
-		:aria-pressed="isChecked ? 'true' : 'false'"
-		:disabled="disabled"
-		:class="{ checked: isChecked, indeterminate, block }"
-		@click.stop="toggleInput"
-	>
-		<div v-if="$slots.prepend" class="prepend"><slot name="prepend" /></div>
-		<v-icon class="checkbox" :name="icon" :disabled="disabled" />
-		<span class="label type-text">
-			<slot v-if="customValue === false">{{ label }}</slot>
-			<input v-else v-model="internalValue" class="custom-input" />
-		</span>
-		<div v-if="$slots.append" class="append"><slot name="append" /></div>
-	</component>
-</template>
-
 <script setup lang="ts">
 import { computed } from 'vue';
-import { useSync } from '@directus/shared/composables';
+import { useSync } from '@directus/composables';
 
 interface Props {
 	/** If the `modelValue` is an array of strings, activates the checkbox if the value is inside it */
@@ -92,26 +71,49 @@ function toggleInput(): void {
 		emit('update:indeterminate', false);
 	}
 
-	if (props.modelValue instanceof Array && props.value) {
-		const newValue = [...props.modelValue];
+	if (props.modelValue instanceof Array) {
+		if (props.value) {
+			const newValue = [...props.modelValue];
 
-		if (props.modelValue.includes(props.value) === false) {
-			newValue.push(props.value);
-		} else {
-			newValue.splice(newValue.indexOf(props.value), 1);
+			if (!props.modelValue.includes(props.value)) {
+				newValue.push(props.value);
+			} else {
+				newValue.splice(newValue.indexOf(props.value), 1);
+			}
+
+			emit('update:modelValue', newValue);
 		}
-
-		emit('update:modelValue', newValue);
 	} else {
 		emit('update:modelValue', !props.modelValue);
 	}
 }
 </script>
 
+<template>
+	<component
+		:is="customValue ? 'div' : 'button'"
+		class="v-checkbox"
+		type="button"
+		role="checkbox"
+		:aria-pressed="isChecked ? 'true' : 'false'"
+		:disabled="disabled"
+		:class="{ checked: isChecked, indeterminate, block }"
+		@click.stop="toggleInput"
+	>
+		<div v-if="$slots.prepend" class="prepend"><slot name="prepend" /></div>
+		<v-icon class="checkbox" :name="icon" :disabled="disabled" />
+		<span class="label type-text">
+			<slot v-if="!customValue">{{ label }}</slot>
+			<input v-else v-model="internalValue" class="custom-input" @click.stop="" />
+		</span>
+		<div v-if="$slots.append" class="append"><slot name="append" /></div>
+	</component>
+</template>
+
 <style>
 body {
-	--v-checkbox-color: var(--primary);
-	--v-checkbox-unchecked-color: var(--foreground-subdued);
+	--v-checkbox-color: var(--theme--primary);
+	--v-checkbox-unchecked-color: var(--theme--foreground-subdued);
 }
 </style>
 
@@ -120,7 +122,7 @@ body {
 
 .v-checkbox {
 	--v-icon-color: var(--v-checkbox-unchecked-color);
-	--v-icon-color-hover: var(--primary);
+	--v-icon-color-hover: var(--theme--primary);
 
 	position: relative;
 	display: flex;
@@ -158,11 +160,11 @@ body {
 		cursor: not-allowed;
 
 		.label {
-			color: var(--foreground-subdued);
+			color: var(--theme--foreground-subdued);
 		}
 
 		.checkbox {
-			--v-icon-color: var(--foreground-subdued);
+			--v-icon-color: var(--theme--foreground-subdued);
 		}
 	}
 
@@ -171,7 +173,7 @@ body {
 		width: 100%;
 		height: var(--input-height);
 		padding: 10px; // 14 - 4 (border)
-		background-color: var(--background-page);
+		background-color: var(--theme--background);
 		border: var(--border-width) solid var(--border-normal);
 		border-radius: var(--border-radius);
 		transition: all var(--fast) var(--transition);
@@ -198,7 +200,7 @@ body {
 
 	&:not(:disabled):hover {
 		.checkbox {
-			--v-icon-color: var(--primary);
+			--v-icon-color: var(--theme--primary);
 		}
 
 		&.block {
@@ -209,7 +211,7 @@ body {
 
 	&:not(:disabled):not(.indeterminate) {
 		.label {
-			color: var(--foreground-normal);
+			color: var(--theme--foreground);
 		}
 
 		&.block {

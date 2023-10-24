@@ -1,5 +1,5 @@
 import api from '@/api';
-import { getEndpoint } from '@directus/shared/utils';
+import { getEndpoint } from '@directus/utils';
 import { unexpectedError } from '@/utils/unexpected-error';
 import { merge } from 'lodash';
 import { ref, Ref, watch } from 'vue';
@@ -9,15 +9,15 @@ export type RelationQuerySingle = {
 	fields: string[];
 };
 
-export function useRelationSingle(
+export function useRelationSingle<T extends Record<string, any>>(
 	value: Ref<number | string | Record<string, any> | null>,
 	previewQuery: Ref<RelationQuerySingle>,
 	relation: Ref<RelationM2O | undefined>
 ) {
-	const displayItem = ref<Record<string, any> | null>(null);
+	const displayItem: Ref<T | null> = ref(null);
 	const loading = ref(false);
 
-	watch([value, previewQuery, relation], getDisplayItems, { immediate: true });
+	watch([value, previewQuery, relation], getDisplayItem, { immediate: true });
 
 	return { update, remove, refresh, displayItem, loading };
 
@@ -41,10 +41,10 @@ export function useRelationSingle(
 	}
 
 	async function refresh() {
-		await getDisplayItems();
+		await getDisplayItem();
 	}
 
-	async function getDisplayItems() {
+	async function getDisplayItem() {
 		const val = value.value;
 
 		if (!val) {
@@ -60,7 +60,7 @@ export function useRelationSingle(
 		const id = typeof val === 'object' ? val[relation.value.relatedPrimaryKeyField.field] : val;
 
 		if (!id) {
-			displayItem.value = val as Record<string, any>;
+			displayItem.value = val as T;
 			return;
 		}
 
@@ -84,7 +84,7 @@ export function useRelationSingle(
 		} catch (err: any) {
 			// if the item has a manually entered primary key, we can ignore the error
 			if (typeof val === 'object' && err.response && err.response.status === 403) {
-				displayItem.value = val;
+				displayItem.value = val as T;
 			} else {
 				unexpectedError(err);
 			}

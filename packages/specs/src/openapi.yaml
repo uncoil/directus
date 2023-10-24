@@ -5,9 +5,9 @@ info:
   contact:
     email: contact@directus.io
   license:
-    name: GPL-3.0
-    url: 'https://www.gnu.org/licenses/gpl-3.0.html'
-  version: 9.0.0
+    name: BUSL-1.1
+    url: 'https://directus.io/bsl'
+  version: '10'
 externalDocs:
   description: Directus Docs
   url: 'https://docs.directus.io'
@@ -73,6 +73,8 @@ tags:
   - name: Roles
     description: Roles are groups of users that share permissions.
     x-collection: directus_roles
+  - name: Schema
+    description: Retrieve and update the schema of an instance.
   - name: Server
     description:
       Access to where Directus runs. Allows you to make sure your server has everything needed to run the platform, and
@@ -85,6 +87,11 @@ tags:
     x-collection: directus_users
   - name: Utilities
     description: Directus comes with various utility endpoints you can use to simplify your development flow.
+  - name: Versions
+    description:
+      Enables users to create unpublished copies of an item, modify them independently from the main version, and
+      promote them to become the new main version when ready.
+    x-collection: directus_versions
   - name: Webhooks
     description: Webhooks.
     x-collection: directus_webhooks
@@ -205,6 +212,14 @@ paths:
   /roles/{id}:
     $ref: './paths/roles/role.yaml'
 
+  # Schema
+  /schema/snapshot:
+    $ref: './paths/schema/snapshot.yaml'
+  /schema/apply:
+    $ref: './paths/schema/apply.yaml'
+  /schema/diff:
+    $ref: './paths/schema/diff.yaml'
+
   # Server
   /server/info:
     $ref: './paths/server/info.yaml'
@@ -249,6 +264,18 @@ paths:
   /utils/random/string:
     $ref: './paths/utils/random.yaml'
 
+  # Versions
+  /versions:
+    $ref: './paths/versions/versions.yaml'
+  /versions/{id}:
+    $ref: './paths/versions/version.yaml'
+  /versions/{id}/save:
+    $ref: './paths/versions/save.yaml'
+  /versions/{id}/compare:
+    $ref: './paths/versions/compare.yaml'
+  /versions/{id}/promote:
+    $ref: './paths/versions/promote.yaml'
+
   # Webhooks
   /webhooks:
     $ref: './paths/webhooks/webhooks.yaml'
@@ -263,6 +290,8 @@ components:
       $ref: './components/preset.yaml'
     Collections:
       $ref: './components/collection.yaml'
+    Diff:
+      $ref: './components/diff.yaml'
     Fields:
       $ref: './components/field.yaml'
     Files:
@@ -283,12 +312,16 @@ components:
       $ref: './components/revision.yaml'
     Roles:
       $ref: './components/role.yaml'
+    Schema:
+      $ref: './components/schema.yaml'
     Settings:
       $ref: './components/setting.yaml'
     Users:
       $ref: './components/user.yaml'
     Query:
       $ref: './definitions/query.yaml'
+    Versions:
+      $ref: './components/version.yaml'
     Webhooks:
       $ref: './components/webhook.yaml'
     x-metadata:
@@ -330,6 +363,10 @@ components:
       $ref: './parameters/fields.yaml'
     Mode:
       $ref: './parameters/mode.yaml'
+    Export:
+      $ref: './parameters/export.yaml'
+    Version:
+      $ref: './parameters/version.yaml'
   responses:
     NotFoundError:
       $ref: './responses/notFoundError.yaml'

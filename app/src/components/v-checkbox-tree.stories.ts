@@ -1,10 +1,13 @@
 import VCheckboxTree from './v-checkbox-tree/v-checkbox-tree.vue';
+
 document.body.classList.add('light');
 
 export default {
 	title: 'Components/VCheckboxTree',
 	component: VCheckboxTree,
-	argTypes: {},
+	argTypes: {
+		search: { control: 'text' },
+	},
 };
 
 const Template = (args) => ({
@@ -15,6 +18,7 @@ const Template = (args) => ({
 });
 
 export const Primary = Template.bind({});
+
 Primary.args = {
 	choices: [
 		{

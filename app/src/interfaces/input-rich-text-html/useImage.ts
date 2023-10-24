@@ -3,11 +3,12 @@ import { i18n } from '@/lang';
 import { addQueryToPath } from '@/utils/add-query-to-path';
 import { getPublicURL } from '@/utils/get-root-path';
 import { Ref, ref, watch } from 'vue';
-import { SettingsStorageAssetPreset } from '@directus/shared/types';
+import { SettingsStorageAssetPreset } from '@directus/types';
 
 type ImageSelection = {
 	imageUrl: string;
 	alt: string;
+	lazy?: boolean;
 	width?: number;
 	height?: number;
 	transformationKey?: string | null;
@@ -67,6 +68,7 @@ export default function useImage(
 				const imageUrl = node.getAttribute('src');
 				const imageUrlParams = imageUrl ? new URL(imageUrl).searchParams : undefined;
 				const alt = node.getAttribute('alt');
+				const lazy = node.getAttribute('loading') === 'lazy';
 				const width = Number(imageUrlParams?.get('width') || undefined) || undefined;
 				const height = Number(imageUrlParams?.get('height') || undefined) || undefined;
 				const transformationKey = imageUrlParams?.get('key') || undefined;
@@ -84,6 +86,7 @@ export default function useImage(
 				imageSelection.value = {
 					imageUrl,
 					alt,
+					lazy,
 					width: selectedPreset.value ? selectedPreset.value.width ?? undefined : width,
 					height: selectedPreset.value ? selectedPreset.value.height ?? undefined : height,
 					transformationKey,
@@ -119,6 +122,7 @@ export default function useImage(
 		imageSelection.value = {
 			imageUrl: replaceUrlAccessToken(assetUrl, imageToken.value),
 			alt: image.title,
+			lazy: false,
 			width: image.width,
 			height: image.height,
 			previewUrl: replaceUrlAccessToken(assetUrl, imageToken.value ?? getToken()),
@@ -152,7 +156,7 @@ export default function useImage(
 		}
 
 		const resizedImageUrl = addQueryToPath(newURL.toString(), queries);
-		const imageHtml = `<img src="${resizedImageUrl}" alt="${img.alt}" />`;
+		const imageHtml = `<img src="${resizedImageUrl}" alt="${img.alt}" ${img.lazy ? 'loading="lazy" ' : ''}/>`;
 		editor.value.selection.setContent(imageHtml);
 		editor.value.undoManager.add();
 		closeImageDrawer();
@@ -163,6 +167,7 @@ export default function useImage(
 		if (!url.includes(getPublicURL() + 'assets/')) {
 			return url;
 		}
+
 		try {
 			const parsedUrl = new URL(url);
 			const params = new URLSearchParams(parsedUrl.search);

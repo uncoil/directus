@@ -1,17 +1,18 @@
-import { HeaderRaw, Item } from '@/components/v-table/types';
-import { useFieldsStore } from '@/stores/fields';
+import { HeaderRaw, Item, Sort } from '@/components/v-table/types';
 import { useAliasFields } from '@/composables/use-alias-fields';
+import { useFieldsStore } from '@/stores/fields';
 import { adjustFieldsForDisplays } from '@/utils/adjust-fields-for-displays';
+import { formatCollectionItemsCount } from '@/utils/format-collection-items-count';
 import { getDefaultDisplayForType } from '@/utils/get-default-display-for-type';
+import { getItemRoute } from '@/utils/get-route';
 import { hideDragImage } from '@/utils/hide-drag-image';
 import { saveAsCSV } from '@/utils/save-as-csv';
 import { syncRefProperty } from '@/utils/sync-ref-property';
-import { formatCollectionItemsCount } from '@/utils/format-collection-items-count';
-import { useCollection, useItems, useSync } from '@directus/shared/composables';
-import { Field } from '@directus/shared/types';
-import { defineLayout } from '@directus/shared/utils';
-import { clone, debounce } from 'lodash';
-import { computed, ref, toRefs, watch } from 'vue';
+import { useCollection, useItems, useSync } from '@directus/composables';
+import { defineLayout } from '@directus/extensions';
+import { Field } from '@directus/types';
+import { debounce } from 'lodash';
+import { computed, ref, toRefs, unref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import TabularActions from './actions.vue';
 import TabularOptions from './options.vue';
@@ -28,6 +29,7 @@ export default defineLayout<LayoutOptions, LayoutQuery>({
 		sidebar: () => undefined,
 		actions: TabularActions,
 	},
+	headerShadow: false,
 	setup(props, { emit }) {
 		const router = useRouter();
 
@@ -41,29 +43,36 @@ export default defineLayout<LayoutOptions, LayoutQuery>({
 
 		const { info, primaryKeyField, fields: fieldsInCollection, sortField } = useCollection(collection);
 
-		const { sort, limit, page, fields, fieldsWithRelational } = useItemOptions();
+		const { sort, limit, page, fields } = useItemOptions();
 
-		const { aliasFields, aliasQuery } = useAliasFields(fieldsWithRelational);
+		const { aliasedFields, aliasQuery, aliasedKeys } = useAliasFields(fields, collection);
 
 		const fieldsWithRelationalAliased = computed(() => {
-			if (!aliasFields.value) return fieldsWithRelational.value;
-			return fieldsWithRelational.value.map((field) =>
-				aliasFields.value?.[field] ? aliasFields.value[field].fullAlias : field
-			);
+			return Object.values(aliasedFields.value).reduce<string[]>((acc, value) => {
+				return [...acc, ...value.fields];
+			}, []);
 		});
 
-		const { items, loading, error, totalPages, itemCount, totalCount, changeManualSort, getItems } = useItems(
-			collection,
-			{
-				sort,
-				limit,
-				page,
-				fields: fieldsWithRelationalAliased,
-				alias: aliasQuery,
-				filter,
-				search,
-			}
-		);
+		const {
+			items,
+			loading,
+			error,
+			totalPages,
+			itemCount,
+			totalCount,
+			changeManualSort,
+			getItems,
+			getItemCount,
+			getTotalCount,
+		} = useItems(collection, {
+			sort,
+			limit,
+			page,
+			fields: fieldsWithRelationalAliased,
+			alias: aliasQuery,
+			filter,
+			search,
+		});
 
 		const {
 			tableSort,
@@ -113,6 +122,9 @@ export default defineLayout<LayoutOptions, LayoutQuery>({
 			filter,
 			search,
 			download,
+			fieldsWithRelationalAliased,
+			aliasedFields,
+			aliasedKeys,
 		};
 
 		async function resetPresetAndRefresh() {
@@ -122,6 +134,8 @@ export default defineLayout<LayoutOptions, LayoutQuery>({
 
 		function refresh() {
 			getItems();
+			getTotalCount();
+			getItemCount();
 		}
 
 		function download() {
@@ -136,7 +150,7 @@ export default defineLayout<LayoutOptions, LayoutQuery>({
 		function selectAll() {
 			if (!primaryKeyField.value) return;
 			const pk = primaryKeyField.value;
-			selection.value = clone(items.value).map((item) => item[pk.field]);
+			selection.value = items.value.map((item) => item[pk.field]);
 		}
 
 		function useItemOptions() {
@@ -144,6 +158,7 @@ export default defineLayout<LayoutOptions, LayoutQuery>({
 			const limit = syncRefProperty(layoutQuery, 'limit', 25);
 			const defaultSort = computed(() => (primaryKeyField.value ? [primaryKeyField.value?.field] : []));
 			const sort = syncRefProperty(layoutQuery, 'sort', defaultSort);
+
 			const fieldsDefaultValue = computed(() => {
 				return fieldsInCollection.value
 					.filter((field: Field) => !field.meta?.hidden)
@@ -152,7 +167,18 @@ export default defineLayout<LayoutOptions, LayoutQuery>({
 					.sort();
 			});
 
-			const fields = syncRefProperty(layoutQuery, 'fields', fieldsDefaultValue);
+			const fields = computed({
+				get() {
+					if (layoutQuery.value?.fields) {
+						return layoutQuery.value.fields.filter((field) => fieldsStore.getField(collection.value!, field));
+					} else {
+						return unref(fieldsDefaultValue);
+					}
+				},
+				set(value) {
+					layoutQuery.value = Object.assign({}, layoutQuery.value, { fields: value });
+				},
+			});
 
 			const fieldsWithRelational = computed(() => {
 				if (!props.collection) return [];
@@ -292,22 +318,25 @@ export default defineLayout<LayoutOptions, LayoutQuery>({
 						selection.value = selection.value.filter((item) => item !== primaryKey);
 					}
 				} else {
-					const next = router.resolve(`/content/${collection.value}/${encodeURIComponent(primaryKey)}`);
+					const route = getItemRoute(unref(collection), primaryKey);
 
-					if (event.ctrlKey || event.metaKey) window.open(next.href, '_blank');
-					else router.push(next);
+					if (event.ctrlKey || event.metaKey) window.open(router.resolve(route).href, '_blank');
+					else router.push(route);
 				}
 			}
 
-			function onSortChange(newSort: { by: string; desc: boolean }) {
-				let sortString = newSort.by;
-				if (!newSort.by) {
+			function onSortChange(newSort: Sort | null) {
+				if (!newSort?.by) {
 					sort.value = [];
 					return;
 				}
+
+				let sortString = newSort.by;
+
 				if (newSort.desc === true) {
 					sortString = '-' + sortString;
 				}
+
 				sort.value = [sortString];
 			}
 

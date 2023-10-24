@@ -1,5 +1,5 @@
-import { DeepPartial, Field, FlowRaw, TriggerType, Width } from '@directus/shared/types';
-import { toArray } from '@directus/shared/utils';
+import { DeepPartial, Field, FlowRaw, TriggerType, Width } from '@directus/types';
+import { toArray } from '@directus/utils';
 import { useI18n } from 'vue-i18n';
 import { getPublicURL } from '../../../../utils/get-root-path';
 
@@ -79,6 +79,8 @@ export function getTriggers() {
 									'items.create',
 									'items.update',
 									'items.delete',
+									'items.promote',
+									'items.sort',
 									{ divider: true },
 									'server.start',
 									'server.stop',
@@ -94,13 +96,17 @@ export function getTriggers() {
 					{
 						field: 'collections',
 						name: t('collections'),
+						type: 'csv',
 						meta: {
 							interface: 'system-collections',
 							width: 'full' as Width,
 							readonly:
-								!scope || ['items.create', 'items.update', 'items.delete'].every((t) => scope?.includes(t) === false),
+								!scope ||
+								['items.create', 'items.update', 'items.delete', 'items.promote'].every(
+									(t) => scope?.includes(t) === false
+								),
 							options: {
-								includeSystem: true,
+								includeSystem: !scope || scope?.filter((t: string) => t !== 'items.promote').length > 0,
 							},
 						},
 					},
@@ -118,12 +124,15 @@ export function getTriggers() {
 									'items.create',
 									'items.update',
 									'items.delete',
+									'items.promote',
 									{ divider: true },
 									'request.not_found',
 									'request.error',
 									'database.error',
 									'auth.login',
 									'auth.jwt',
+									'auth.create',
+									'auth.update',
 									'authenticate',
 								],
 								font: 'monospace',
@@ -138,9 +147,12 @@ export function getTriggers() {
 							interface: 'system-collections',
 							width: 'full' as Width,
 							readonly:
-								!scope || ['items.create', 'items.update', 'items.delete'].every((t) => scope?.includes(t) === false),
+								!scope ||
+								['items.create', 'items.update', 'items.delete', 'items.promote'].every(
+									(t) => scope?.includes(t) === false
+								),
 							options: {
-								includeSystem: true,
+								includeSystem: !scope || scope?.filter((t: string) => t !== 'items.promote').length > 0,
 							},
 						},
 					},
@@ -195,7 +207,7 @@ export function getTriggers() {
 					copyable: true,
 				},
 			],
-			options: ({ async }) => [
+			options: ({ async, method }) => [
 				{
 					field: 'method',
 					name: t('triggers.webhook.method'),
@@ -251,6 +263,19 @@ export function getTriggers() {
 							allowOther: true,
 						},
 						hidden: async,
+					},
+				},
+				{
+					field: 'cacheEnabled',
+					name: '$t:operations.trigger.cache',
+					type: 'boolean',
+					meta: {
+						width: 'half',
+						hidden: method && method !== 'GET',
+						interface: 'toggle',
+					},
+					schema: {
+						default_value: true,
 					},
 				},
 			],
@@ -342,6 +367,18 @@ export function getTriggers() {
 					},
 				},
 				{
+					field: 'async',
+					name: t('triggers.webhook.async'),
+					type: 'boolean',
+					meta: {
+						width: 'half' as Width,
+						interface: 'toggle',
+					},
+					schema: {
+						default_value: false,
+					},
+				},
+				{
 					field: 'location',
 					name: t('location'),
 					meta: {
@@ -369,18 +406,6 @@ export function getTriggers() {
 					},
 				},
 				{
-					field: 'async',
-					name: t('triggers.webhook.async'),
-					type: 'boolean',
-					meta: {
-						width: 'half' as Width,
-						interface: 'toggle',
-					},
-					schema: {
-						default_value: false,
-					},
-				},
-				{
 					field: 'requireSelection',
 					name: t('triggers.manual.collection_page'),
 					type: 'boolean',
@@ -404,6 +429,72 @@ export function getTriggers() {
 					},
 					schema: {
 						default_value: true,
+					},
+				},
+				{
+					field: 'modal',
+					type: 'alias',
+					meta: {
+						interface: 'presentation-divider',
+						width: 'full',
+						options: {
+							title: t('confirmation_dialog'),
+							icon: 'quiz',
+						},
+					},
+				},
+				{
+					field: 'requireConfirmation',
+					name: t('require_confirmation'),
+					type: 'boolean',
+					meta: {
+						interface: 'boolean',
+						width: 'full' as Width,
+						options: {
+							label: t('require_confirmation'),
+						},
+					},
+					schema: {
+						default_value: false,
+					},
+				},
+				{
+					field: 'confirmationDescription',
+					name: t('confirmation_description'),
+					type: 'string',
+					meta: {
+						interface: 'system-input-translated-string',
+						options: {
+							placeholder: '$t:run_flow_confirm',
+						},
+						conditions: [
+							{
+								rule: {
+									requireConfirmation: {
+										_eq: false,
+									},
+								},
+								hidden: true,
+							},
+						],
+					},
+				},
+				{
+					field: 'fields',
+					name: t('confirmation_input_fields'),
+					type: 'json',
+					meta: {
+						interface: 'system-inline-fields',
+						conditions: [
+							{
+								rule: {
+									requireConfirmation: {
+										_eq: false,
+									},
+								},
+								hidden: true,
+							},
+						],
 					},
 				},
 			],

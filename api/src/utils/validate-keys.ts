@@ -1,7 +1,7 @@
-import { SchemaOverview } from '@directus/shared/types';
-import { ForbiddenException } from '../exceptions';
-import { PrimaryKey } from '../types';
+import { ForbiddenError } from '@directus/errors';
+import type { SchemaOverview } from '@directus/types';
 import validateUUID from 'uuid-validate';
+import type { PrimaryKey } from '../types/index.js';
 
 /**
  * Validate keys based on its type
@@ -17,11 +17,12 @@ export function validateKeys(
 			validateKeys(schema, collection, keyField, key);
 		}
 	} else {
-		const primaryKeyFieldType = schema.collections[collection].fields[keyField].type;
+		const primaryKeyFieldType = schema.collections[collection]?.fields[keyField]?.type;
+
 		if (primaryKeyFieldType === 'uuid' && !validateUUID(String(keys))) {
-			throw new ForbiddenException();
+			throw new ForbiddenError();
 		} else if (primaryKeyFieldType === 'integer' && !Number.isInteger(Number(keys))) {
-			throw new ForbiddenException();
+			throw new ForbiddenError();
 		}
 	}
 }

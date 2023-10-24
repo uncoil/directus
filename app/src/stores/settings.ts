@@ -4,7 +4,7 @@ import { notify } from '@/utils/notify';
 import { unexpectedError } from '@/utils/unexpected-error';
 import { merge } from 'lodash';
 import { defineStore } from 'pinia';
-import { Settings } from '@directus/shared/types';
+import { Settings } from '@directus/types';
 import { useUserStore } from './user';
 
 export const useSettingsStore = defineStore({
@@ -25,7 +25,7 @@ export const useSettingsStore = defineStore({
 			this.$reset();
 		},
 
-		async updateSettings(updates: { [key: string]: any }) {
+		async updateSettings(updates: { [key: string]: any }, notifyOnSuccess = true) {
 			const settingsCopy = { ...(this.settings as Settings) };
 			const newSettings = merge({}, this.settings, updates);
 
@@ -36,9 +36,11 @@ export const useSettingsStore = defineStore({
 
 				this.settings = response.data.data;
 
-				notify({
-					title: i18n.global.t('settings_update_success'),
-				});
+				if (notifyOnSuccess) {
+					notify({
+						title: i18n.global.t('settings_update_success'),
+					});
+				}
 			} catch (err: any) {
 				this.settings = settingsCopy;
 				unexpectedError(err);

@@ -1,36 +1,10 @@
-<template>
-	<div class="list" :class="{ 'has-header': showHeader }">
-		<div>
-			<v-list>
-				<v-list-item
-					v-for="row in data"
-					:key="row[primaryKeyField]"
-					class="selectable"
-					:clickable="linkToItem === true"
-					@click="startEditing(row)"
-				>
-					<render-template :item="row" :collection="collection" :template="displayTemplate" />
-					<div class="spacer" />
-				</v-list-item>
-			</v-list>
-		</div>
-		<drawer-item
-			:active="!!currentlyEditing"
-			:collection="collection"
-			:primary-key="currentlyEditing ?? '+'"
-			:edits="editsAtStart"
-			@input="saveEdits"
-			@update:active="cancelEdit"
-		/>
-	</div>
-</template>
-
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import api from '@/api';
 import { useFieldsStore } from '@/stores/fields';
 import { useInsightsStore } from '@/stores/insights';
 import { unexpectedError } from '@/utils/unexpected-error';
+import { getEndpoint } from '@directus/utils';
 
 const props = withDefaults(
 	defineProps<{
@@ -61,7 +35,6 @@ const primaryKeyField = computed(() => fieldsStore.getPrimaryKeyFieldForCollecti
 function startEditing(item: Record<string, any>) {
 	if (!props.linkToItem) return;
 	currentlyEditing.value = item[primaryKeyField.value];
-	editsAtStart.value = item;
 }
 
 function cancelEdit() {
@@ -71,7 +44,7 @@ function cancelEdit() {
 
 async function saveEdits(item: Record<string, any>) {
 	try {
-		await api.patch(`/items/${props.collection}/${currentlyEditing.value}`, item);
+		await api.patch(`${getEndpoint(props.collection)}/${currentlyEditing.value}`, item);
 	} catch (err: any) {
 		unexpectedError(err);
 	}
@@ -79,6 +52,33 @@ async function saveEdits(item: Record<string, any>) {
 	await insightsStore.refresh(props.dashboard);
 }
 </script>
+
+<template>
+	<div class="list" :class="{ 'has-header': showHeader }">
+		<div>
+			<v-list>
+				<v-list-item
+					v-for="row in data"
+					:key="row[primaryKeyField]"
+					class="selectable"
+					:clickable="linkToItem === true"
+					@click="startEditing(row)"
+				>
+					<render-template :item="row" :collection="collection" :template="displayTemplate" />
+					<div class="spacer" />
+				</v-list-item>
+			</v-list>
+		</div>
+		<drawer-item
+			:active="!!currentlyEditing"
+			:collection="collection"
+			:primary-key="currentlyEditing ?? '+'"
+			:edits="editsAtStart"
+			@input="saveEdits"
+			@update:active="cancelEdit"
+		/>
+	</div>
+</template>
 
 <style scoped>
 .list {

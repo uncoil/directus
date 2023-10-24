@@ -1,3 +1,14 @@
+<script setup lang="ts">
+import { useI18n } from 'vue-i18n';
+import { Revision } from '@/types/revisions';
+
+defineProps<{
+	revision: Revision;
+}>();
+
+const { t } = useI18n();
+</script>
+
 <template>
 	<div>
 		<v-notice type="info">
@@ -9,25 +20,6 @@
 		<v-form disabled :collection="revision.collection" :primary-key="revision.item" :initial-values="revision.data" />
 	</div>
 </template>
-
-<script lang="ts">
-import { useI18n } from 'vue-i18n';
-import { defineComponent, PropType } from 'vue';
-import { Revision } from './types';
-
-export default defineComponent({
-	props: {
-		revision: {
-			type: Object as PropType<Revision>,
-			required: true,
-		},
-	},
-	setup() {
-		const { t } = useI18n();
-		return { t };
-	},
-});
-</script>
 
 <style lang="scss" scoped>
 .v-notice {

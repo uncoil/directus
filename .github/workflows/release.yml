@@ -3,17 +3,31 @@ name: Release
 on:
   push:
     tags:
-      - 'v*'
+      - 'v[0-9]*'
 
 env:
   GHCR_IMAGE: ghcr.io/${{ github.repository }}
   DOCKERHUB_IMAGE: ${{ github.repository }}
-  NODE_OPTIONS: --max_old_space_size=6144
 
 jobs:
+  check-version:
+    name: Check Version
+    runs-on: ubuntu-latest
+    outputs:
+      prerelease: ${{ steps.version.outputs.prerelease && true || false }}
+      prerelease-id: ${{ steps.version.outputs.prerelease-0 }}
+    steps:
+      - name: Check version
+        uses: madhead/semver-utils@v3
+        id: version
+        with:
+          version: ${{ github.ref_name }}
+          lenient: false
+
   create-release:
     name: Create Release
     runs-on: ubuntu-latest
+    needs: check-version
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -21,69 +35,41 @@ jobs:
       - name: Create release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release create "$GITHUB_REF_NAME" --notes "Directus $GITHUB_REF_NAME"
-
-  build:
-    name: Build Packages
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
-
-      - name: Prepare
-        uses: ./.github/actions/prepare
-
-      - name: Build
         run: |
-          node docker/pack
-
-      - name: Cache build artifacts
-        uses: actions/cache@v3
-        with:
-          path: '**/dist'
-          key: build-artifacts-${{ github.sha }}
+          gh release create \
+            "$GITHUB_REF_NAME" \
+            ${{ needs.check-version.outputs.prerelease == 'true' && '--prerelease' || '' }} \
+            --notes "Directus $GITHUB_REF_NAME"
 
   publish-npm:
     name: Publish to NPM
     runs-on: ubuntu-latest
-    needs: build
-    # Skip this step in forks
-    if: github.repository_owner == 'directus'
+    needs: check-version
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
-
-      - name: Restore build artifacts
-        uses: actions/cache@v3
-        with:
-          path: '**/dist'
-          key: build-artifacts-${{ github.sha }}
 
       - name: Prepare
         uses: ./.github/actions/prepare
         with:
-          build: false
+          registry: https://registry.npmjs.org
 
       - name: Publish packages to NPM
         env:
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
-          pnpm config set "//registry.npmjs.org/:_authToken" "${NPM_TOKEN}"
-          pnpm -r publish --access=public --no-git-checks
+          pnpm --recursive publish \
+            --access=public \
+            --no-git-checks \
+            --tag ${{ needs.check-version.outputs.prerelease == 'true' && needs.check-version.outputs.prerelease-id  || 'latest' }}
 
   build-images:
     name: Build Images
     runs-on: ubuntu-latest
-    needs: build
+    needs: check-version
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
-
-      - name: Restore build artifacts
-        uses: actions/cache@v3
-        with:
-          path: '**/dist'
-          key: build-artifacts-${{ github.sha }}
 
       - name: Setup QEMU
         uses: docker/setup-qemu-action@v2
@@ -110,6 +96,7 @@ jobs:
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
             type=semver,pattern={{major}}
+            type=raw,value=${{ needs.check-version.outputs.prerelease-id }},enable=${{ needs.check-version.outputs.prerelease }}
 
       - name: Login to Docker Hub
         uses: docker/login-action@v2
@@ -127,10 +114,10 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push
-        uses: docker/build-push-action@v3
+        uses: docker/build-push-action@v4
         with:
           context: .
-          file: ./docker/Dockerfile
+          file: ./Dockerfile
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           platforms: linux/amd64,linux/arm64

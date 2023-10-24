@@ -1,3 +1,33 @@
+<script setup lang="ts">
+import { useNotificationsStore } from '@/stores/notifications';
+
+const props = withDefaults(
+	defineProps<{
+		id: string;
+		title: string;
+		text?: string;
+		icon?: string | null;
+		type?: 'info' | 'success' | 'warning' | 'error';
+		tail?: boolean;
+		dense?: boolean;
+		showClose?: boolean;
+		loading?: boolean;
+		progress?: number;
+	}>(),
+	{
+		type: 'info',
+	}
+);
+
+const notificationsStore = useNotificationsStore();
+
+function close() {
+	if (props.showClose === true) {
+		notificationsStore.remove(props.id);
+	}
+}
+</script>
+
 <template>
 	<div class="notification-item" :class="[type, { tail, dense }]" @click="close">
 		<div v-if="loading || progress || icon" class="icon">
@@ -14,68 +44,6 @@
 		<v-icon v-if="showClose" name="close" clickable class="close" @click="close" />
 	</div>
 </template>
-
-<script lang="ts">
-import { defineComponent } from 'vue';
-import { useNotificationsStore } from '@/stores/notifications';
-
-export default defineComponent({
-	props: {
-		id: {
-			type: String,
-			required: true,
-		},
-		title: {
-			type: String,
-			required: true,
-		},
-		text: {
-			type: String,
-			default: null,
-		},
-		icon: {
-			type: String,
-			default: null,
-		},
-		type: {
-			type: String,
-			default: 'info',
-			validator: (val: string) => ['info', 'success', 'warning', 'error'].includes(val),
-		},
-		tail: {
-			type: Boolean,
-			default: false,
-		},
-		dense: {
-			type: Boolean,
-			default: false,
-		},
-		showClose: {
-			type: Boolean,
-			default: false,
-		},
-		loading: {
-			type: Boolean,
-			default: false,
-		},
-		progress: {
-			type: Number,
-			default: undefined,
-		},
-	},
-	setup(props) {
-		const notificationsStore = useNotificationsStore();
-
-		return { close };
-
-		function close() {
-			if (props.showClose === true) {
-				notificationsStore.remove(props.id);
-			}
-		}
-	},
-});
-</script>
 
 <style lang="scss" scoped>
 .notification-item {
@@ -148,22 +116,22 @@ export default defineComponent({
 	}
 
 	&.info {
-		background-color: var(--primary);
+		background-color: var(--theme--primary);
 
 		&.tail::after {
-			background-color: var(--primary);
+			background-color: var(--theme--primary);
 		}
 
 		.text {
-			color: var(--primary-alt);
+			color: var(--theme--primary-background);
 		}
 	}
 
 	&.success {
-		background-color: var(--success);
+		background-color: var(--theme--success);
 
 		&.tail::after {
-			background-color: var(--success);
+			background-color: var(--theme--success);
 		}
 
 		.text {
@@ -172,10 +140,10 @@ export default defineComponent({
 	}
 
 	&.warning {
-		background-color: var(--warning);
+		background-color: var(--theme--warning);
 
 		&.tail::after {
-			background-color: var(--warning);
+			background-color: var(--theme--warning);
 		}
 
 		.text {
@@ -184,10 +152,10 @@ export default defineComponent({
 	}
 
 	&.error {
-		background-color: var(--danger);
+		background-color: var(--theme--danger);
 
 		&.tail::after {
-			background-color: var(--danger);
+			background-color: var(--theme--danger);
 		}
 
 		.text {

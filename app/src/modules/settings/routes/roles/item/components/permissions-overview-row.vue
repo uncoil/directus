@@ -1,7 +1,35 @@
+<script setup lang="ts">
+import { Permission } from '@directus/types';
+import { toRefs } from 'vue';
+import { useI18n } from 'vue-i18n';
+import useUpdatePermissions from '../composables/use-update-permissions';
+import PermissionsOverviewToggle from './permissions-overview-toggle.vue';
+import { Collection } from '@/types/collections';
+
+const props = defineProps<{
+	collection: Collection;
+	permissions: Permission[];
+	refreshing: number[];
+	role?: string;
+	appMinimal?: Partial<Permission>[];
+}>();
+
+const { t } = useI18n();
+
+const { collection, role, permissions } = toRefs(props);
+const { setFullAccessAll, setNoAccessAll, getPermission } = useUpdatePermissions(collection, permissions, role);
+
+function isLoading(action: string) {
+	const permission = getPermission(action);
+	if (!permission) return false;
+	return props.refreshing.includes(permission.id);
+}
+</script>
+
 <template>
 	<div class="permissions-overview-row">
 		<span class="name">
-			<span v-tooltip.left="collection.collection">{{ collection.name }}</span>
+			<span v-tooltip.left="collection.name">{{ collection.collection }}</span>
 			<span class="actions">
 				<span class="all" @click="setFullAccessAll">{{ t('all') }}</span>
 				<span class="divider">/</span>
@@ -52,68 +80,21 @@
 	</div>
 </template>
 
-<script lang="ts">
-import { useI18n } from 'vue-i18n';
-import { defineComponent, PropType, toRefs } from 'vue';
-import { Permission, Collection } from '@directus/shared/types';
-import PermissionsOverviewToggle from './permissions-overview-toggle.vue';
-import useUpdatePermissions from '../composables/use-update-permissions';
-
-export default defineComponent({
-	components: { PermissionsOverviewToggle },
-	props: {
-		role: {
-			type: String,
-			default: null,
-		},
-		collection: {
-			type: Object as PropType<Collection>,
-			required: true,
-		},
-		permissions: {
-			type: Array as PropType<Permission[]>,
-			required: true,
-		},
-		refreshing: {
-			type: Array as PropType<number[]>,
-			required: true,
-		},
-		appMinimal: {
-			type: [Boolean, Array] as PropType<false | Partial<Permission>[]>,
-			default: false,
-		},
-	},
-	setup(props) {
-		const { t } = useI18n();
-
-		const { collection, role, permissions } = toRefs(props);
-		const { setFullAccessAll, setNoAccessAll, getPermission } = useUpdatePermissions(collection, permissions, role);
-
-		return { t, getPermission, isLoading, setFullAccessAll, setNoAccessAll };
-
-		function isLoading(action: string) {
-			const permission = getPermission(action);
-			if (!permission) return false;
-			return props.refreshing.includes(permission.id);
-		}
-	},
-});
-</script>
-
 <style lang="scss" scoped>
 .permissions-overview-row {
 	display: flex;
 	align-items: center;
 	height: 48px;
 	padding: 0 12px;
-	background-color: var(--background-input);
+	background-color: var(--theme--form--field--input--background);
 
 	.name {
 		flex-grow: 1;
+		font-family: var(--theme--font-family-monospace);
 
 		.actions {
 			margin-left: 8px;
-			color: var(--foreground-subdued);
+			color: var(--theme--foreground-subdued);
 			font-size: 12px;
 			opacity: 0;
 			transition: opacity var(--fast) var(--transition);
@@ -123,11 +104,11 @@ export default defineComponent({
 
 				&:hover {
 					&.all {
-						color: var(--success);
+						color: var(--theme--success);
 					}
 
 					&.none {
-						color: var(--danger);
+						color: var(--theme--danger);
 					}
 				}
 			}

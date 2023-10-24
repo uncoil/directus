@@ -1,3 +1,166 @@
+<script setup lang="ts">
+import { useExtensions } from '@/extensions';
+import { Vector2 } from '@/utils/vector2';
+import { FlowRaw } from '@directus/types';
+import { computed, ref, toRefs } from 'vue';
+import { useI18n } from 'vue-i18n';
+import { ATTACHMENT_OFFSET, REJECT_OFFSET, RESOLVE_OFFSET } from '../constants';
+import { getTriggers } from '../triggers';
+import OptionsOverview from './options-overview.vue';
+
+export type Target = 'resolve' | 'reject';
+export type ArrowInfo = {
+	id: string;
+	pos: Vector2;
+	type: Target;
+};
+
+const props = withDefaults(
+	defineProps<{
+		panel: Record<string, any>;
+		type?: 'trigger' | 'operation';
+		editMode?: boolean;
+		parent?: { id: string; type: Target; loner: boolean };
+		flow: FlowRaw;
+		panelsToBeDeleted: string[];
+		isHovered: boolean;
+		subdued?: boolean;
+	}>(),
+	{
+		type: 'operation',
+		editMode: false,
+		parent: undefined,
+		isHovered: false,
+		subdued: false,
+	}
+);
+
+const { panelsToBeDeleted } = toRefs(props);
+
+const { operations } = useExtensions();
+const { triggers } = getTriggers();
+
+const emit = defineEmits([
+	'create',
+	'preview',
+	'edit',
+	'update',
+	'delete',
+	'move',
+	'duplicate',
+	'arrow-move',
+	'arrow-stop',
+	'show-hint',
+	'hide-hint',
+	'flow-status',
+]);
+
+const { t } = useI18n();
+
+const styleVars = {
+	'--reject-left': REJECT_OFFSET.x + 'px',
+	'--reject-top': REJECT_OFFSET.y + 'px',
+	'--resolve-left': RESOLVE_OFFSET.x + 'px',
+	'--resolve-top': RESOLVE_OFFSET.y + 'px',
+	'--attachment-x': ATTACHMENT_OFFSET.x + 'px',
+	'--attachment-y': ATTACHMENT_OFFSET.y + 'px',
+};
+
+const currentOperation = computed(() => {
+	if (props.type === 'operation') return operations.value.find((operation) => operation.id === props.panel.type);
+	else return triggers.find((trigger) => trigger.id === props.panel.type);
+});
+
+let down: Target | 'parent' | undefined = undefined;
+let rafId: number | null = null;
+const moving = ref(false);
+let workspaceOffset: Vector2 = new Vector2(0, 0);
+
+const isReject = computed(() => props.parent?.type === 'reject');
+
+function pointerdown(target: Target | 'parent') {
+	if (!props.editMode || (target === 'parent' && props.parent === undefined)) return;
+
+	down = target;
+
+	const rect = document.getElementsByClassName('workspace').item(0)?.getBoundingClientRect();
+
+	if (rect) {
+		workspaceOffset = new Vector2(rect.left, rect.top);
+	}
+
+	window.addEventListener('pointermove', pointermove);
+	window.addEventListener('pointerup', pointerup);
+}
+
+const pointermove = (event: PointerEvent) => {
+	rafId = window.requestAnimationFrame(() => {
+		moving.value = true;
+		if (!down) return;
+
+		const arrowInfo: ArrowInfo =
+			down === 'parent'
+				? {
+						id: props.parent?.id,
+						type: props.parent?.type as Target,
+						pos: new Vector2(
+							Math.round((event.pageX - workspaceOffset.x) / 20) * 20,
+							Math.round((event.pageY - workspaceOffset.y) / 20) * 20
+						),
+				  }
+				: {
+						id: props.panel.id,
+						type: down,
+						pos: new Vector2(
+							Math.round((event.pageX - workspaceOffset.x) / 20) * 20,
+							Math.round((event.pageY - workspaceOffset.y) / 20) * 20
+						),
+				  };
+
+		emit('arrow-move', arrowInfo);
+	});
+};
+
+function pointerup() {
+	if (
+		!moving.value &&
+		((down === 'reject' && (!props.panel.reject || panelsToBeDeleted.value.includes(props.panel.reject))) ||
+			(down === 'resolve' && (!props.panel.resolve || panelsToBeDeleted.value.includes(props.panel.resolve))))
+	) {
+		emit('create', props.panel.id, down);
+	}
+
+	moving.value = false;
+	down = undefined;
+	if (rafId) window.cancelAnimationFrame(rafId);
+
+	emit('arrow-stop');
+
+	window.removeEventListener('pointermove', pointermove);
+	window.removeEventListener('pointerup', pointerup);
+}
+
+const flowStatus = computed({
+	get() {
+		return props.flow.status;
+	},
+	set(newVal: string) {
+		emit('flow-status', newVal);
+	},
+});
+
+/* show hint buttons */
+function pointerEnter() {
+	if (!props.editMode) return;
+	emit('show-hint', props.panel.id);
+}
+
+function pointerLeave() {
+	if (!props.editMode) return;
+	emit('hide-hint');
+}
+</script>
+
 <template>
 	<v-workspace-tile
 		v-bind="panel"
@@ -79,39 +242,42 @@
 				<v-icon name="adjust" />
 			</div>
 		</template>
-		<div v-if="typeof currentOperation?.overview === 'function'" class="block">
-			<div v-tooltip="panel.key" class="name">
-				{{ panel.id === '$trigger' ? t(`triggers.${panel.type}.name`) : panel.name }}
+		<v-error-boundary
+			v-if="typeof currentOperation?.overview === 'function'"
+			:name="`operation-overview-${currentOperation.id}`"
+		>
+			<div class="block">
+				<options-overview :panel="panel" :current-operation="currentOperation" :flow="flow" />
 			</div>
-			<dl class="options-overview selectable">
-				<div
-					v-for="{ label, text, copyable } of translate(currentOperation?.overview(panel.options ?? {}, { flow }))"
-					:key="label"
-				>
-					<dt>{{ label }}</dt>
-					<dd>{{ text }}</dd>
-					<v-icon
-						v-if="isCopySupported && copyable"
-						name="copy"
-						small
-						clickable
-						class="clipboard-icon"
-						@click="copyToClipboard(text)"
-					/>
+
+			<template #fallback="{ error: optionsOverviewError }">
+				<div class="options-overview-error">
+					<v-icon name="warning" />
+					{{ t('unexpected_error') }}
+					<v-error :error="optionsOverviewError" />
 				</div>
-			</dl>
-		</div>
-		<component
-			:is="`operation-overview-${currentOperation.id}`"
+			</template>
+		</v-error-boundary>
+		<v-error-boundary
 			v-else-if="currentOperation && 'id' in currentOperation"
-			:options="currentOperation"
-		/>
+			:name="`operation-overview-${currentOperation.id}`"
+		>
+			<component :is="`operation-overview-${currentOperation.id}`" :options="currentOperation" />
+
+			<template #fallback="{ error: operationOverviewError }">
+				<div class="options-overview-error">
+					<v-icon name="warning" />
+					{{ t('unexpected_error') }}
+					<v-error :error="operationOverviewError" />
+				</div>
+			</template>
+		</v-error-boundary>
 		<template v-if="panel.id === '$trigger'" #footer>
 			<div class="status-footer" :class="flowStatus">
 				<display-color
 					v-tooltip="flowStatus === 'active' ? t('active') : t('inactive')"
 					class="status-dot"
-					:value="flowStatus === 'active' ? 'var(--primary)' : 'var(--foreground-subdued)'"
+					:value="flowStatus === 'active' ? 'var(--theme--primary)' : 'var(--theme--foreground-subdued)'"
 				/>
 
 				<v-select
@@ -134,167 +300,6 @@
 	</v-workspace-tile>
 </template>
 
-<script lang="ts" setup>
-import { useClipboard } from '@/composables/use-clipboard';
-import { useExtensions } from '@/extensions';
-import { translate } from '@/utils/translate-object-values';
-import { Vector2 } from '@/utils/vector2';
-import { FlowRaw } from '@directus/shared/types';
-import { computed, ref, toRefs } from 'vue';
-import { useI18n } from 'vue-i18n';
-import { ATTACHMENT_OFFSET, REJECT_OFFSET, RESOLVE_OFFSET } from '../constants';
-import { getTriggers } from '../triggers';
-
-export type Target = 'resolve' | 'reject';
-export type ArrowInfo = {
-	id: string;
-	pos: Vector2;
-	type: Target;
-};
-
-const props = withDefaults(
-	defineProps<{
-		panel: Record<string, any>;
-		type?: 'trigger' | 'operation';
-		editMode?: boolean;
-		parent?: { id: string; type: Target; loner: boolean };
-		flow: FlowRaw;
-		panelsToBeDeleted: string[];
-		isHovered: boolean;
-		subdued?: boolean;
-	}>(),
-	{
-		type: 'operation',
-		editMode: false,
-		parent: undefined,
-		isHovered: false,
-		subdued: false,
-	}
-);
-
-const { panelsToBeDeleted } = toRefs(props);
-
-const { operations } = useExtensions();
-const { triggers } = getTriggers();
-
-const emit = defineEmits([
-	'create',
-	'preview',
-	'edit',
-	'update',
-	'delete',
-	'move',
-	'duplicate',
-	'arrow-move',
-	'arrow-stop',
-	'show-hint',
-	'hide-hint',
-	'flow-status',
-]);
-
-const { t } = useI18n();
-
-const { isCopySupported, copyToClipboard } = useClipboard();
-
-const styleVars = {
-	'--reject-left': REJECT_OFFSET.x + 'px',
-	'--reject-top': REJECT_OFFSET.y + 'px',
-	'--resolve-left': RESOLVE_OFFSET.x + 'px',
-	'--resolve-top': RESOLVE_OFFSET.y + 'px',
-	'--attachment-x': ATTACHMENT_OFFSET.x + 'px',
-	'--attachment-y': ATTACHMENT_OFFSET.y + 'px',
-};
-
-const currentOperation = computed(() => {
-	if (props.type === 'operation') return operations.value.find((operation) => operation.id === props.panel.type);
-	else return triggers.find((trigger) => trigger.id === props.panel.type);
-});
-
-let down: Target | 'parent' | undefined = undefined;
-let rafId: number | null = null;
-let moving = ref(false);
-let workspaceOffset: Vector2 = new Vector2(0, 0);
-
-const isReject = computed(() => props.parent?.type === 'reject');
-
-function pointerdown(target: Target | 'parent') {
-	if (!props.editMode || (target === 'parent' && props.parent === undefined)) return;
-
-	down = target;
-
-	const rect = document.getElementsByClassName('workspace').item(0)?.getBoundingClientRect();
-	if (rect) {
-		workspaceOffset = new Vector2(rect.left, rect.top);
-	}
-
-	window.addEventListener('pointermove', pointermove);
-	window.addEventListener('pointerup', pointerup);
-}
-
-const pointermove = (event: PointerEvent) => {
-	rafId = window.requestAnimationFrame(() => {
-		moving.value = true;
-		if (!down) return;
-		const arrowInfo: ArrowInfo =
-			down === 'parent'
-				? {
-						id: props.parent?.id,
-						type: props.parent?.type as Target,
-						pos: new Vector2(
-							Math.round((event.pageX - workspaceOffset.x) / 20) * 20,
-							Math.round((event.pageY - workspaceOffset.y) / 20) * 20
-						),
-				  }
-				: {
-						id: props.panel.id,
-						type: down,
-						pos: new Vector2(
-							Math.round((event.pageX - workspaceOffset.x) / 20) * 20,
-							Math.round((event.pageY - workspaceOffset.y) / 20) * 20
-						),
-				  };
-
-		emit('arrow-move', arrowInfo);
-	});
-};
-
-function pointerup() {
-	if (
-		!moving.value &&
-		((down === 'reject' && (!props.panel.reject || panelsToBeDeleted.value.includes(props.panel.reject))) ||
-			(down === 'resolve' && (!props.panel.resolve || panelsToBeDeleted.value.includes(props.panel.resolve))))
-	)
-		emit('create', props.panel.id, down);
-	moving.value = false;
-	down = undefined;
-	if (rafId) window.cancelAnimationFrame(rafId);
-
-	emit('arrow-stop');
-
-	window.removeEventListener('pointermove', pointermove);
-	window.removeEventListener('pointerup', pointerup);
-}
-
-const flowStatus = computed({
-	get() {
-		return props.flow.status;
-	},
-	set(newVal: string) {
-		emit('flow-status', newVal);
-	},
-});
-
-/* show hint buttons */
-function pointerEnter() {
-	if (!props.editMode) return;
-	emit('show-hint', props.panel.id);
-}
-function pointerLeave() {
-	if (!props.editMode) return;
-	emit('hide-hint');
-}
-</script>
-
 <style lang="scss" scoped>
 .v-workspace-tile.block-container {
 	position: relative;
@@ -302,7 +307,7 @@ function pointerLeave() {
 	padding: 4px;
 
 	:deep(.header .name) {
-		color: var(--primary);
+		color: var(--theme--primary);
 	}
 
 	.flow-status-select {
@@ -317,15 +322,15 @@ function pointerLeave() {
 		.name {
 			display: inline-block;
 			font-size: 20px;
-			color: var(--foreground-normal-alt);
+			color: var(--theme--foreground-accent);
 			font-weight: 600;
 			margin-bottom: 8px;
 		}
 	}
 
 	&.trigger {
-		border-color: var(--primary);
-		box-shadow: 0 0 0 1px var(--primary);
+		border-color: var(--theme--primary);
+		box-shadow: 0 0 0 1px var(--theme--primary);
 		transition: var(--fast) var(--transition);
 		transition-property: border-color, box-shadow;
 
@@ -340,7 +345,7 @@ function pointerLeave() {
 			border-radius: 4px;
 			z-index: -1;
 			opacity: 0.2;
-			box-shadow: 0 0 0 10px var(--primary);
+			box-shadow: 0 0 0 10px var(--theme--primary);
 
 			animation-name: floating;
 			animation-duration: 3s;
@@ -348,15 +353,15 @@ function pointerLeave() {
 			animation-timing-function: cubic-bezier(0.5, 0, 0.5, 1);
 			@keyframes floating {
 				0% {
-					box-shadow: 0 0 0 10px var(--primary);
+					box-shadow: 0 0 0 10px var(--theme--primary);
 					opacity: 0.2;
 				}
 				50% {
-					box-shadow: 0 0 0 8px var(--primary);
+					box-shadow: 0 0 0 8px var(--theme--primary);
 					opacity: 0.3;
 				}
 				100% {
-					box-shadow: 0 0 0 10px var(--primary);
+					box-shadow: 0 0 0 10px var(--theme--primary);
 					opacity: 0.2;
 				}
 			}
@@ -407,10 +412,10 @@ function pointerLeave() {
 		display: flex;
 		justify-content: center;
 		align-items: center;
-		background-color: var(--background-page);
+		background-color: var(--theme--background);
 		transform: translate(calc(-50% - 1px), calc(-50% - 1px));
 
-		--v-icon-color: var(--primary);
+		--v-icon-color: var(--theme--primary);
 	}
 
 	.add-resolve,
@@ -419,7 +424,7 @@ function pointerLeave() {
 		left: var(--resolve-left);
 
 		.button-hint {
-			--v-icon-color: var(--primary);
+			--v-icon-color: var(--theme--primary);
 		}
 	}
 
@@ -428,10 +433,10 @@ function pointerLeave() {
 		top: var(--reject-top);
 		left: var(--reject-left);
 
-		--v-icon-color: var(--secondary);
+		--v-icon-color: var(--theme--secondary);
 
 		.button-hint {
-			--v-icon-color: var(--secondary);
+			--v-icon-color: var(--theme--secondary);
 		}
 	}
 
@@ -443,67 +448,60 @@ function pointerLeave() {
 	&.reject {
 		:deep(.header) {
 			.v-icon {
-				color: var(--secondary);
+				color: var(--theme--secondary);
 			}
 
 			.name {
-				color: var(--secondary);
+				color: var(--theme--secondary);
 			}
 		}
 
 		.attachment {
-			--v-icon-color: var(--secondary);
+			--v-icon-color: var(--theme--secondary);
 		}
 	}
 
 	&.subdued {
-		color: var(--foreground-subdued);
+		color: var(--theme--foreground-subdued);
 
 		:deep(.header) {
 			.v-icon {
-				color: var(--foreground-subdued);
+				color: var(--theme--foreground-subdued);
 			}
 			.name {
-				color: var(--foreground-subdued);
+				color: var(--theme--foreground-subdued);
 			}
 		}
 
 		.button {
-			border-color: var(--foreground-subdued);
-			--v-icon-color: var(--foreground-subdued);
+			border-color: var(--theme--foreground-subdued);
+			--v-icon-color: var(--theme--foreground-subdued);
 
 			.dot {
-				background-color: var(--foreground-subdued);
+				background-color: var(--theme--foreground-subdued);
 			}
 		}
 
 		.button-hint {
-			--v-icon-color: var(--foreground-subdued);
+			--v-icon-color: var(--theme--foreground-subdued);
 		}
 	}
 }
 
-.options-overview {
-	> div {
-		flex-wrap: wrap;
-		align-items: center;
-		margin-bottom: 6px;
-	}
+.options-overview-error {
+	padding: 20px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	flex-direction: column;
+	width: 100%;
+	height: 100%;
 
-	dt {
-		flex-basis: 100%;
-		margin-bottom: -2px;
-	}
+	--v-icon-color: var(--theme--danger);
 
-	dd {
-		font-family: var(--family-monospace);
-		flex-basis: 0;
-	}
-
-	.clipboard-icon {
-		--v-icon-color: var(--foreground-subdued);
-		--v-icon-color-hover: var(--foreground-normal);
-		margin-left: 4px;
+	.v-error {
+		margin-top: 8px;
+		max-width: 100%;
 	}
 }
 

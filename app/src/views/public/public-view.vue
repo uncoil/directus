@@ -1,11 +1,114 @@
+<script setup lang="ts">
+import { useServerStore } from '@/stores/server';
+import { getRootPath } from '@/utils/get-root-path';
+import { getAppearance } from '@/utils/get-appearance';
+import { cssVar } from '@directus/utils/browser';
+import Color from 'color';
+import { storeToRefs } from 'pinia';
+import { computed } from 'vue';
+import { useI18n } from 'vue-i18n';
+
+interface Props {
+	wide?: boolean;
+}
+
+withDefaults(defineProps<Props>(), {
+	wide: false,
+});
+
+const { t } = useI18n();
+const serverStore = useServerStore();
+
+const { info } = storeToRefs(serverStore);
+
+const colors = computed(() => {
+	const primary = info.value?.project?.project_color || 'var(--theme--primary)';
+	const primaryHex = primary.startsWith('var(--') ? cssVar(primary.substring(4, primary.length - 1)) : primary;
+	const isDark = getAppearance() === 'dark';
+	const primaryColor = Color(primaryHex);
+
+	const primaryColorHSL = primaryColor.hsl() as unknown as {
+		model: 'hsl';
+		color: [number, number, number];
+		valpha: number;
+	};
+
+	/**
+	 * The default light mode secondary color is based on the standard difference between Directus purple and pink, which is:
+	 * primary = 250.9, 100, 63.3
+	 * secondary = 320, 100, 80
+	 * diff = +69.1, 0, +16.7
+	 *
+	 * For dark mode, we greatly reduce the lightness value to -50
+	 */
+
+	const secondaryColor = Color({
+		h: primaryColorHSL.color[0] + (isDark ? -69.1 : 69.1),
+		s: primaryColorHSL.color[1] + 0,
+		l: primaryColorHSL.color[2] + (isDark ? -50 : 16.7),
+	});
+
+	const shades = [];
+
+	for (let i = 1; i < 6; i++) {
+		const color = Color(primaryColor).mix(secondaryColor, i / 10);
+		shades.push(color.hex().toString());
+	}
+
+	return {
+		primary: primaryColor.hex().toString(),
+		secondary: secondaryColor.hex().toString(),
+		shades: shades,
+	};
+});
+
+const isBranded = computed(() => {
+	return info.value?.project?.project_color ? true : false;
+});
+
+const hasCustomBackground = computed(() => {
+	return !!info.value?.project?.public_background;
+});
+
+const artStyles = computed(() => {
+	if (!hasCustomBackground.value) return {};
+
+	const url = getRootPath() + `assets/${info.value!.project?.public_background}`;
+
+	return {
+		background: `url(${url})`,
+		backgroundSize: 'cover',
+		backgroundPosition: 'center center',
+	};
+});
+
+const foregroundURL = computed(() => {
+	if (!info.value?.project?.public_foreground) return null;
+	return '/assets/' + info.value.project?.public_foreground;
+});
+
+const logoURL = computed<string | null>(() => {
+	if (!info.value?.project?.project_logo) return null;
+	return '/assets/' + info.value.project?.project_logo;
+});
+</script>
+
 <template>
 	<div class="public-view" :class="{ branded: isBranded }">
 		<div class="container" :class="{ wide }">
 			<div class="title-box">
-				<div v-if="info?.project?.project_logo" class="logo" :style="{ backgroundColor: info?.project.project_color }">
+				<div
+					v-if="info?.project?.project_logo"
+					class="logo"
+					:style="info?.project.project_color ? { backgroundColor: info.project.project_color } : {}"
+				>
 					<v-image :src="logoURL" :alt="info?.project.project_name || 'Logo'" />
 				</div>
-				<div v-else class="logo" :style="{ backgroundColor: info?.project?.project_color }">
+				<div
+					v-else
+					class="logo"
+					:style="info?.project?.project_color ? { backgroundColor: info.project.project_color } : {}"
+				>
 					<img src="./logo-light.svg" alt="Directus" class="directus-logo" />
 				</div>
 				<div class="title">
@@ -56,101 +159,6 @@
 	</div>
 </template>
 
-<script lang="ts" setup>
-import { computed } from 'vue';
-import { useServerStore } from '@/stores/server';
-import { storeToRefs } from 'pinia';
-import { getRootPath } from '@/utils/get-root-path';
-import { useI18n } from 'vue-i18n';
-import { cssVar } from '@directus/shared/utils/browser';
-import Color from 'color';
-import { getTheme } from '@/utils/get-theme';
-
-interface Props {
-	wide?: boolean;
-}
-
-withDefaults(defineProps<Props>(), {
-	wide: false,
-});
-
-const { t } = useI18n();
-const serverStore = useServerStore();
-
-const { info } = storeToRefs(serverStore);
-
-const colors = computed(() => {
-	const primary = info.value?.project?.project_color || 'var(--primary)';
-	const primaryHex = primary.startsWith('var(--') ? cssVar(primary.substring(4, primary.length - 1)) : primary;
-	const isDark = getTheme() === 'dark';
-	const primaryColor = Color(primaryHex);
-
-	const primaryColorHSL = primaryColor.hsl() as unknown as {
-		model: 'hsl';
-		color: [number, number, number];
-		valpha: number;
-	};
-
-	/**
-	 * The default light mode secondary color is based on the standard difference between Directus purple and pink, which is:
-	 * primary = 250.9, 100, 63.3
-	 * secondary = 320, 100, 80
-	 * diff = +69.1, 0, +16.7
-	 *
-	 * For dark mode, we greatly reduce the lightness value to -50
-	 */
-
-	const secondaryColor = Color({
-		h: primaryColorHSL.color[0] + (isDark ? -69.1 : 69.1),
-		s: primaryColorHSL.color[1] + 0,
-		l: primaryColorHSL.color[2] + (isDark ? -50 : 16.7),
-	});
-
-	const shades = [];
-
-	for (let i = 1; i < 6; i++) {
-		const color = Color(primaryColor).mix(secondaryColor, i / 10);
-		shades.push(color.hex().toString());
-	}
-
-	return {
-		primary: primaryColor.hex().toString(),
-		secondary: secondaryColor.hex().toString(),
-		shades: shades,
-	};
-});
-
-const isBranded = computed(() => {
-	return info.value?.project?.project_color ? true : false;
-});
-
-const hasCustomBackground = computed(() => {
-	return !!info.value?.project?.public_background;
-});
-
-const artStyles = computed(() => {
-	if (!hasCustomBackground.value) return null;
-
-	const url = getRootPath() + `assets/${info.value!.project?.public_background}`;
-
-	return {
-		background: `url(${url})`,
-		backgroundSize: 'cover',
-		backgroundPosition: 'center center',
-	};
-});
-
-const foregroundURL = computed(() => {
-	if (!info.value?.project?.public_foreground) return null;
-	return '/assets/' + info.value.project?.public_foreground;
-});
-
-const logoURL = computed<string | null>(() => {
-	if (!info.value?.project?.project_logo) return null;
-	return '/assets/' + info.value.project?.project_logo;
-});
-</script>
-
 <style lang="scss" scoped>
 .public-view {
 	display: flex;
@@ -158,7 +166,7 @@ const logoURL = computed<string | null>(() => {
 	height: 100%;
 
 	:slotted(.v-icon) {
-		--v-icon-color: var(--foreground-subdued);
+		--v-icon-color: var(--theme--foreground-subdued);
 
 		margin-left: 4px;
 	}
@@ -265,7 +273,7 @@ const logoURL = computed<string | null>(() => {
 
 	.notice {
 		display: flex;
-		color: var(--foreground-subdued);
+		color: var(--theme--foreground-subdued);
 	}
 
 	.title-box {
@@ -287,7 +295,7 @@ const logoURL = computed<string | null>(() => {
 
 			.subtitle {
 				width: 100%;
-				color: var(--foreground-subdued);
+				color: var(--theme--foreground-subdued);
 			}
 		}
 	}
@@ -299,7 +307,7 @@ const logoURL = computed<string | null>(() => {
 		justify-content: center;
 		width: 56px;
 		height: 56px;
-		background-color: var(--brand);
+		background-color: var(--project-color);
 		border-radius: calc(var(--border-radius) - 2px);
 
 		img {
@@ -311,18 +319,18 @@ const logoURL = computed<string | null>(() => {
 	}
 
 	&.branded :deep(.v-button) {
-		--v-button-background-color: var(--foreground-normal-alt);
-		--v-button-background-color-hover: var(--foreground-normal-alt);
-		--v-button-background-color-active: var(--foreground-normal-alt);
+		--v-button-background-color: var(--theme--foreground-accent);
+		--v-button-background-color-hover: var(--theme--foreground-accent);
+		--v-button-background-color-active: var(--theme--foreground-accent);
 	}
 
 	&.branded :deep(.v-input) {
-		--v-input-border-color-focus: var(--foreground-normal);
-		--v-input-box-shadow-color-focus: var(--foreground-normal);
+		--v-input-border-color-focus: var(--theme--foreground);
+		--v-input-box-shadow-color-focus: var(--theme--foreground);
 	}
 
 	&.branded :deep(.v-input.solid) {
-		--v-input-border-color-focus: var(--foreground-subdued);
+		--v-input-border-color-focus: var(--theme--foreground-subdued);
 	}
 }
 
@@ -338,3 +346,4 @@ const logoURL = computed<string | null>(() => {
 	opacity: 0;
 }
 </style>
+@/utils/get-appearance

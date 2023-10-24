@@ -1,6 +1,8 @@
-import { Snapshot, SnapshotDiff } from '../types';
-import { diff } from 'deep-diff';
-import { orderBy } from 'lodash';
+import deepDiff from 'deep-diff';
+import { orderBy } from 'lodash-es';
+import type { Snapshot, SnapshotDiff } from '../types/index.js';
+import { DiffKind } from '../types/index.js';
+import { sanitizeCollection, sanitizeField, sanitizeRelation } from './sanitize-schema.js';
 
 export function getSnapshotDiff(current: Snapshot, after: Snapshot): SnapshotDiff {
 	const diffedSnapshot: SnapshotDiff = {
@@ -13,7 +15,7 @@ export function getSnapshotDiff(current: Snapshot, after: Snapshot): SnapshotDif
 
 					return {
 						collection: currentCollection.collection,
-						diff: diff(currentCollection, afterCollection),
+						diff: deepDiff.diff(sanitizeCollection(currentCollection), sanitizeCollection(afterCollection)),
 					};
 				}),
 				...after.collections
@@ -26,7 +28,7 @@ export function getSnapshotDiff(current: Snapshot, after: Snapshot): SnapshotDif
 					})
 					.map((afterCollection) => ({
 						collection: afterCollection.collection,
-						diff: diff(undefined, afterCollection),
+						diff: deepDiff.diff(undefined, sanitizeCollection(afterCollection)),
 					})),
 			].filter((obj) => Array.isArray(obj.diff)) as SnapshotDiff['collections'],
 			'collection'
@@ -38,10 +40,16 @@ export function getSnapshotDiff(current: Snapshot, after: Snapshot): SnapshotDif
 						(afterField) => afterField.collection === currentField.collection && afterField.field === currentField.field
 					);
 
+					const isAutoIncrementPrimaryKey =
+						!!currentField.schema?.is_primary_key && !!currentField.schema?.has_auto_increment;
+
 					return {
 						collection: currentField.collection,
 						field: currentField.field,
-						diff: diff(currentField, afterField),
+						diff: deepDiff.diff(
+							sanitizeField(currentField, isAutoIncrementPrimaryKey),
+							sanitizeField(afterField, isAutoIncrementPrimaryKey)
+						),
 					};
 				}),
 				...after.fields
@@ -56,7 +64,7 @@ export function getSnapshotDiff(current: Snapshot, after: Snapshot): SnapshotDif
 					.map((afterField) => ({
 						collection: afterField.collection,
 						field: afterField.field,
-						diff: diff(undefined, afterField),
+						diff: deepDiff.diff(undefined, sanitizeField(afterField)),
 					})),
 			].filter((obj) => Array.isArray(obj.diff)) as SnapshotDiff['fields'],
 			['collection']
@@ -73,7 +81,7 @@ export function getSnapshotDiff(current: Snapshot, after: Snapshot): SnapshotDif
 						collection: currentRelation.collection,
 						field: currentRelation.field,
 						related_collection: currentRelation.related_collection,
-						diff: diff(currentRelation, afterRelation),
+						diff: deepDiff.diff(sanitizeRelation(currentRelation), sanitizeRelation(afterRelation)),
 					};
 				}),
 				...after.relations
@@ -89,7 +97,7 @@ export function getSnapshotDiff(current: Snapshot, after: Snapshot): SnapshotDif
 						collection: afterRelation.collection,
 						field: afterRelation.field,
 						related_collection: afterRelation.related_collection,
-						diff: diff(undefined, afterRelation),
+						diff: deepDiff.diff(undefined, sanitizeRelation(afterRelation)),
 					})),
 			].filter((obj) => Array.isArray(obj.diff)) as SnapshotDiff['relations'],
 			['collection']
@@ -101,7 +109,7 @@ export function getSnapshotDiff(current: Snapshot, after: Snapshot): SnapshotDif
 	 */
 
 	const deletedCollections = diffedSnapshot.collections
-		.filter((collection) => collection.diff?.[0].kind === 'D')
+		.filter((collection) => collection.diff?.[0]?.kind === DiffKind.DELETE)
 		.map(({ collection }) => collection);
 
 	diffedSnapshot.fields = diffedSnapshot.fields.filter(

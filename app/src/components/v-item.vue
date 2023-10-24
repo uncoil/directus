@@ -1,12 +1,6 @@
-<template>
-	<div class="v-item">
-		<slot v-bind="{ active: isActive, toggle }" />
-	</div>
-</template>
-
 <script setup lang="ts">
 import { toRefs } from 'vue';
-import { useGroupable } from '@directus/shared/composables';
+import { useGroupable } from '@directus/composables';
 
 interface Props {
 	/** Which value to represent when active */
@@ -27,6 +21,7 @@ const props = withDefaults(defineProps<Props>(), {
 });
 
 const { active } = toRefs(props);
+
 const { active: isActive, toggle } = useGroupable({
 	value: props.value,
 	group: props.scope,
@@ -34,3 +29,9 @@ const { active: isActive, toggle } = useGroupable({
 	active,
 });
 </script>
+
+<template>
+	<div class="v-item">
+		<slot v-bind="{ active: isActive, toggle }" />
+	</div>
+</template>

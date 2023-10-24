@@ -3,13 +3,19 @@
  * For all possible keys, see: https://docs.directus.io/self-hosted/config-options/
  */
 
+import { parseJSON, toArray } from '@directus/utils';
+import { JAVASCRIPT_FILE_EXTS } from '@directus/constants';
 import dotenv from 'dotenv';
 import fs from 'fs';
-import { clone, toNumber, toString } from 'lodash';
+import { clone, toNumber, toString } from 'lodash-es';
+import { createRequire } from 'node:module';
+import { pathToFileURL } from 'node:url';
 import path from 'path';
-import { requireYAML } from './utils/require-yaml';
-import { toArray } from '@directus/shared/utils';
-import { parseJSON } from '@directus/shared/utils';
+import getModuleDefault from './utils/get-module-default.js';
+import { requireYAML } from './utils/require-yaml.js';
+import { toBoolean } from './utils/to-boolean.js';
+
+const require = createRequire(import.meta.url);
 
 // keeping this here for now to prevent a circular import to constants.ts
 const allowedEnvironmentVars = [
@@ -24,7 +30,11 @@ const allowedEnvironmentVars = [
 	'ROOT_REDIRECT',
 	'SERVE_APP',
 	'GRAPHQL_INTROSPECTION',
+	'MAX_BATCH_MUTATION',
 	'LOGGER_.+',
+	'QUERY_LIMIT_MAX',
+	'QUERY_LIMIT_DEFAULT',
+	'ROBOTS_TXT',
 	// server
 	'SERVER_.+',
 	// database
@@ -38,6 +48,14 @@ const allowedEnvironmentVars = [
 	'REFRESH_TOKEN_COOKIE_SECURE',
 	'REFRESH_TOKEN_COOKIE_SAME_SITE',
 	'REFRESH_TOKEN_COOKIE_NAME',
+
+	'REDIS',
+	'REDIS_HOST',
+	'REDIS_PORT',
+	'REDIS_USERNAME',
+	'REDIS_PASSWORD',
+	'REDIS_DB',
+
 	'LOGIN_STALL_TIME',
 	'PASSWORD_RESET_URL_ALLOW_LIST',
 	'USER_INVITE_URL_ALLOW_LIST',
@@ -58,24 +76,22 @@ const allowedEnvironmentVars = [
 	'CORS_CREDENTIALS',
 	'CORS_MAX_AGE',
 	// rate limiting
+	'RATE_LIMITER_GLOBAL_.+',
 	'RATE_LIMITER_.+',
 	// cache
 	'CACHE_ENABLED',
 	'CACHE_TTL',
 	'CACHE_CONTROL_S_MAXAGE',
 	'CACHE_AUTO_PURGE',
+	'CACHE_AUTO_PURGE_IGNORE_LIST',
 	'CACHE_SYSTEM_TTL',
 	'CACHE_SCHEMA',
 	'CACHE_PERMISSIONS',
 	'CACHE_NAMESPACE',
 	'CACHE_STORE',
 	'CACHE_STATUS_HEADER',
-	'CACHE_REDIS',
-	'CACHE_REDIS_HOST',
-	'CACHE_REDIS_PORT',
-	'CACHE_REDIS_PASSWORD',
-	'CACHE_MEMCACHE',
 	'CACHE_VALUE_MAX_SIZE',
+	'CACHE_SKIP_ALLOWED',
 	'CACHE_HEALTHCHECK_THRESHOLD',
 	// storage
 	'STORAGE_LOCATIONS',
@@ -97,12 +113,19 @@ const allowedEnvironmentVars = [
 	'STORAGE_.+_HEALTHCHECK_THRESHOLD',
 	// metadata
 	'FILE_METADATA_ALLOW_LIST',
+
+	// files
+	'FILES_MAX_UPLOAD_SIZE',
+	'FILES_CONTENT_TYPE_ALLOW_LIST',
+
 	// assets
 	'ASSETS_CACHE_TTL',
 	'ASSETS_TRANSFORM_MAX_CONCURRENT',
 	'ASSETS_TRANSFORM_IMAGE_MAX_DIMENSION',
 	'ASSETS_TRANSFORM_MAX_OPERATIONS',
+	'ASSETS_TRANSFORM_TIMEOUT',
 	'ASSETS_CONTENT_SECURITY_POLICY',
+	'ASSETS_INVALID_IMAGE_SENSITIVITY_LEVEL',
 	// auth
 	'AUTH_PROVIDERS',
 	'AUTH_DISABLE_DEFAULT',
@@ -139,15 +162,18 @@ const allowedEnvironmentVars = [
 	'AUTH_.+_IDP.+',
 	'AUTH_.+_SP.+',
 	// extensions
+	'PACKAGE_FILE_LOCATION',
 	'EXTENSIONS_PATH',
 	'EXTENSIONS_AUTO_RELOAD',
+	'EXTENSIONS_CACHE_TTL',
+	'EXTENSIONS_SANDBOX_MEMORY',
+	'EXTENSIONS_SANDBOX_TIMEOUT',
 	// messenger
 	'MESSENGER_STORE',
 	'MESSENGER_NAMESPACE',
-	'MESSENGER_REDIS',
-	'MESSENGER_REDIS_HOST',
-	'MESSENGER_REDIS_PORT',
-	'MESSENGER_REDIS_PASSWORD',
+	// synchronization
+	'SYNCHRONIZATION_STORE',
+	'SYNCHRONIZATION_NAMESPACE',
 	// emails
 	'EMAIL_FROM',
 	'EMAIL_TRANSPORT',
@@ -178,7 +204,11 @@ const allowedEnvironmentVars = [
 	'RELATIONAL_BATCH_SIZE',
 	'EXPORT_BATCH_SIZE',
 	// flows
-	'FLOWS_EXEC_ALLOWED_MODULES',
+	'FLOWS_ENV_ALLOW_LIST',
+	'FLOWS_RUN_SCRIPT_MAX_MEMORY',
+	'FLOWS_RUN_SCRIPT_TIMEOUT',
+	// websockets
+	'WEBSOCKETS_.+',
 ].map((name) => new RegExp(`^${name}$`));
 
 const acceptedEnvTypes = ['string', 'number', 'regex', 'array', 'json'];
@@ -191,6 +221,9 @@ const defaults: Record<string, any> = {
 	PUBLIC_URL: '/',
 	MAX_PAYLOAD_SIZE: '1mb',
 	MAX_RELATIONAL_DEPTH: 10,
+	QUERY_LIMIT_DEFAULT: 100,
+	MAX_BATCH_MUTATION: Infinity,
+	ROBOTS_TXT: 'User-agent: *\nDisallow: /',
 
 	DB_EXCLUDE_TABLES: 'spatial_ref_sys,sysdiagrams',
 
@@ -199,9 +232,14 @@ const defaults: Record<string, any> = {
 	STORAGE_LOCAL_ROOT: './uploads',
 
 	RATE_LIMITER_ENABLED: false,
-	RATE_LIMITER_POINTS: 25,
+	RATE_LIMITER_POINTS: 50,
 	RATE_LIMITER_DURATION: 1,
 	RATE_LIMITER_STORE: 'memory',
+
+	RATE_LIMITER_GLOBAL_ENABLED: false,
+	RATE_LIMITER_GLOBAL_POINTS: 1000,
+	RATE_LIMITER_GLOBAL_DURATION: 1,
+	RATE_LIMITER_GLOBAL_STORE: 'memory',
 
 	ACCESS_TOKEN_TTL: '15m',
 	REFRESH_TOKEN_TTL: '7d',
@@ -210,6 +248,7 @@ const defaults: Record<string, any> = {
 	REFRESH_TOKEN_COOKIE_NAME: 'directus_refresh_token',
 
 	LOGIN_STALL_TIME: 500,
+	SERVER_SHUTDOWN_TIMEOUT: 1000,
 
 	ROOT_REDIRECT: './admin',
 
@@ -226,18 +265,23 @@ const defaults: Record<string, any> = {
 	CACHE_TTL: '5m',
 	CACHE_NAMESPACE: 'system-cache',
 	CACHE_AUTO_PURGE: false,
+	CACHE_AUTO_PURGE_IGNORE_LIST: 'directus_activity,directus_presets',
 	CACHE_CONTROL_S_MAXAGE: '0',
 	CACHE_SCHEMA: true,
 	CACHE_PERMISSIONS: true,
 	CACHE_VALUE_MAX_SIZE: false,
+	CACHE_SKIP_ALLOWED: false,
 
 	AUTH_PROVIDERS: '',
 	AUTH_DISABLE_DEFAULT: false,
 
+	PACKAGE_FILE_LOCATION: '.',
 	EXTENSIONS_PATH: './extensions',
 	EXTENSIONS_AUTO_RELOAD: false,
+	EXTENSIONS_SANDBOX_MEMORY: 100,
+	EXTENSIONS_SANDBOX_TIMEOUT: 1000,
 
-	EMAIL_FROM: 'no-reply@directus.io',
+	EMAIL_FROM: 'no-reply@example.com',
 	EMAIL_VERIFY_SETUP: true,
 	EMAIL_TRANSPORT: 'sendmail',
 	EMAIL_SENDMAIL_NEW_LINE: 'unix',
@@ -246,14 +290,16 @@ const defaults: Record<string, any> = {
 	TELEMETRY: true,
 
 	ASSETS_CACHE_TTL: '30d',
-	ASSETS_TRANSFORM_MAX_CONCURRENT: 1,
+	ASSETS_TRANSFORM_MAX_CONCURRENT: 25,
 	ASSETS_TRANSFORM_IMAGE_MAX_DIMENSION: 6000,
 	ASSETS_TRANSFORM_MAX_OPERATIONS: 5,
+	ASSETS_TRANSFORM_TIMEOUT: '7500ms',
+	ASSETS_INVALID_IMAGE_SENSITIVITY_LEVEL: 'warning',
 
 	IP_TRUST_PROXY: true,
 	IP_CUSTOM_HEADER: false,
 
-	IMPORT_IP_DENY_LIST: '0.0.0.0',
+	IMPORT_IP_DENY_LIST: ['0.0.0.0', '169.254.169.254'],
 
 	SERVE_APP: true,
 
@@ -265,7 +311,31 @@ const defaults: Record<string, any> = {
 
 	GRAPHQL_INTROSPECTION: true,
 
-	FLOWS_EXEC_ALLOWED_MODULES: false,
+	WEBSOCKETS_ENABLED: false,
+	WEBSOCKETS_REST_ENABLED: true,
+	WEBSOCKETS_REST_AUTH: 'handshake',
+	WEBSOCKETS_REST_AUTH_TIMEOUT: 10,
+	WEBSOCKETS_REST_PATH: '/websocket',
+	WEBSOCKETS_GRAPHQL_ENABLED: true,
+	WEBSOCKETS_GRAPHQL_AUTH: 'handshake',
+	WEBSOCKETS_GRAPHQL_AUTH_TIMEOUT: 10,
+	WEBSOCKETS_GRAPHQL_PATH: '/graphql',
+	WEBSOCKETS_HEARTBEAT_ENABLED: true,
+	WEBSOCKETS_HEARTBEAT_PERIOD: 30,
+
+	FLOWS_ENV_ALLOW_LIST: false,
+	FLOWS_RUN_SCRIPT_MAX_MEMORY: 32,
+	FLOWS_RUN_SCRIPT_TIMEOUT: 10000,
+
+	PRESSURE_LIMITER_ENABLED: true,
+	PRESSURE_LIMITER_SAMPLE_INTERVAL: 250,
+	PRESSURE_LIMITER_MAX_EVENT_LOOP_UTILIZATION: 0.99,
+	PRESSURE_LIMITER_MAX_EVENT_LOOP_DELAY: 500,
+	PRESSURE_LIMITER_MAX_MEMORY_RSS: false,
+	PRESSURE_LIMITER_MAX_MEMORY_HEAP_USED: false,
+	PRESSURE_LIMITER_RETRY_AFTER: false,
+
+	FILES_MIME_TYPE_ALLOW_LIST: '*/*',
 };
 
 // Allows us to force certain environment variable into a type, instead of relying
@@ -281,17 +351,25 @@ const typeMap: Record<string, string> = {
 	DB_PORT: 'number',
 
 	DB_EXCLUDE_TABLES: 'array',
+
+	CACHE_SKIP_ALLOWED: 'boolean',
+	CACHE_AUTO_PURGE_IGNORE_LIST: 'array',
+
 	IMPORT_IP_DENY_LIST: 'array',
 
 	FILE_METADATA_ALLOW_LIST: 'array',
 
 	GRAPHQL_INTROSPECTION: 'boolean',
+
+	MAX_BATCH_MUTATION: 'number',
+
+	SERVER_SHUTDOWN_TIMEOUT: 'number',
 };
 
 let env: Record<string, any> = {
 	...defaults,
 	...process.env,
-	...processConfiguration(),
+	...(await processConfiguration()),
 };
 
 process.env = env;
@@ -309,11 +387,11 @@ export const getEnv = () => env;
  * When changes have been made during runtime, like in the CLI, we can refresh the env object with
  * the newly created variables
  */
-export function refreshEnv(): void {
+export async function refreshEnv(): Promise<void> {
 	env = {
 		...defaults,
 		...process.env,
-		...processConfiguration(),
+		...(await processConfiguration()),
 	};
 
 	process.env = env;
@@ -321,33 +399,33 @@ export function refreshEnv(): void {
 	env = processValues(env);
 }
 
-function processConfiguration() {
-	const configPath = path.resolve(process.env.CONFIG_PATH || defaults.CONFIG_PATH);
+async function processConfiguration() {
+	const configPath = path.resolve(process.env['CONFIG_PATH'] || defaults['CONFIG_PATH']);
 
 	if (fs.existsSync(configPath) === false) return {};
 
-	const fileExt = path.extname(configPath).toLowerCase();
+	const fileExt = path.extname(configPath).toLowerCase().substring(1);
 
-	if (fileExt === '.js') {
-		const module = require(configPath);
-		const exported = module.default || module;
+	if ((JAVASCRIPT_FILE_EXTS as readonly string[]).includes(fileExt)) {
+		const data = await import(pathToFileURL(configPath).toString());
+		const config = getModuleDefault(data);
 
-		if (typeof exported === 'function') {
-			return exported(process.env);
-		} else if (typeof exported === 'object') {
-			return exported;
+		if (typeof config === 'function') {
+			return config(process.env);
+		} else if (typeof config === 'object') {
+			return config;
 		}
 
 		throw new Error(
-			`Invalid JS configuration file export type. Requires one of "function", "object", received: "${typeof exported}"`
+			`Invalid JS configuration file export type. Requires one of "function", "object", received: "${typeof config}"`
 		);
 	}
 
-	if (fileExt === '.json') {
+	if (fileExt === 'json') {
 		return require(configPath);
 	}
 
-	if (fileExt === '.yaml' || fileExt === '.yml') {
+	if (fileExt === 'yaml' || fileExt === 'yml') {
 		const data = requireYAML(configPath);
 
 		if (typeof data === 'object') {
@@ -374,13 +452,14 @@ function getEnvironmentValueWithPrefix(envArray: Array<string>): Array<string | 
 		if (isEnvSyntaxPrefixPresent(item)) {
 			return getEnvironmentValueByType(item);
 		}
+
 		return item;
 	});
 }
 
 function getEnvironmentValueByType(envVariableString: string) {
-	const variableType = getVariableType(envVariableString);
-	const envVariableValue = getEnvVariableValue(envVariableString, variableType);
+	const variableType = getVariableType(envVariableString)!;
+	const envVariableValue = getEnvVariableValue(envVariableString, variableType)!;
 
 	switch (variableType) {
 		case 'number':
@@ -407,14 +486,17 @@ function processValues(env: Record<string, any>) {
 		// If key ends with '_FILE', try to get the value from the file defined in this variable
 		// and store it in the variable with the same name but without '_FILE' at the end
 		let newKey: string | undefined;
+
 		if (key.length > 5 && key.endsWith('_FILE')) {
 			newKey = key.slice(0, -5);
+
 			if (allowedEnvironmentVars.some((pattern) => pattern.test(newKey as string))) {
 				if (newKey in env && !(newKey in defaults && env[newKey] === defaults[newKey])) {
 					throw new Error(
 						`Duplicate environment variable encountered: you can't use "${newKey}" and "${key}" simultaneously.`
 					);
 				}
+
 				try {
 					value = fs.readFileSync(value, { encoding: 'utf8' });
 					key = newKey;
@@ -449,6 +531,7 @@ function processValues(env: Record<string, any>) {
 				case 'boolean':
 					env[key] = toBoolean(value);
 			}
+
 			continue;
 		}
 
@@ -505,8 +588,4 @@ function tryJSON(value: any) {
 	} catch {
 		return value;
 	}
-}
-
-function toBoolean(value: any): boolean {
-	return value === 'true' || value === true || value === '1' || value === 1;
 }

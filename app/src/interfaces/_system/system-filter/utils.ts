@@ -1,5 +1,5 @@
 import { get, isPlainObject } from 'lodash';
-import { Filter } from '@directus/shared/types';
+import { Filter } from '@directus/types';
 
 export function getNodeName(node: Filter): string {
 	if (!node) return '';
@@ -19,7 +19,6 @@ export function getComparator(node: Record<string, any>): string {
 	return getNodeName(get(node, getField(node)));
 }
 
-// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 export function fieldToFilter(field: string, operator: string, value: any): Record<string, any> {
 	return fieldToFilterR(field.split('.'));
 

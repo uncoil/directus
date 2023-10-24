@@ -1,31 +1,95 @@
 ---
+## Be aware:
+#Due to the way this is imported, JavaScript reserved words, including "delete", "private",
+#"void", etc are stripped out. See
+#https://github.com/rollup/plugins/blob/8748b8cd3bbab3c5ac6190556930219f19060e63/packages/pluginutils/src/makeLegalIdentifier.ts#L4
+#and
+#https://github.com/rollup/plugins/blob/8748b8cd3bbab3c5ac6190556930219f19060e63/packages/yaml/src/index.js#L45
+#Illegal words:
+#'break', 'case', 'class', 'catch', 'const', 'continue', 'debugger', 'default', 'delete', 'do',
+#'else', 'export', 'extends', 'finally', 'for', 'function', 'if', 'import', 'in', 'instanceof',
+#'let', 'new', 'return', 'super', 'switch', 'this', 'throw', 'try', 'typeof', 'var', 'void',
+#'while', 'with', 'yield', 'enum', 'await', 'implements', 'package', 'protected', 'static',
+#'interface', 'private', 'public', 'arguments', 'Infinity', 'NaN', 'undefined', 'null', 'true',
+#'false', 'eval', 'uneval', 'isFinite', 'isNaN', 'parseFloat', 'parseInt', 'decodeURI',
+#'decodeURIComponent', 'encodeURI', 'encodeURIComponent', 'escape', 'unescape', 'Object',
+#'Function', 'Boolean', 'Symbol', 'Error', 'EvalError', 'InternalError', 'RangeError',
+#'ReferenceError', 'SyntaxError', 'TypeError', 'URIError', 'Number', 'Math', 'Date', 'String',
+#'RegExp', 'Array', 'Int8Array', 'Uint8Array', 'Uint8ClampedArray', 'Int16Array', 'Uint16Array',
+#'Int32Array', 'Uint32Array', 'Float32Array', 'Float64Array', 'Map', 'Set', 'WeakMap', 'WeakSet',
+#'SIMD', 'ArrayBuffer', 'DataView', 'JSON', 'Promise', 'Generator', 'GeneratorFunction', 'Reflect',
+#'Proxy', 'Intl'
+identifier: Identifikator
 avatar: Avatar
 application: Aplikacija
+default_provider: Podrazumevano
+method: Metoda
 published: Objavljeno
-edit_field: Izmijeni
+draft: Nacrt
+archived: Arhivirano
+modules: Moduli
+module_bar: Modul Bar
+logs: Događaji
+reset_width: Resetuj Širinu
+tile_size: Veličina pločice
+edit_field: Izmeni polje
+conditions: Uslovi
 location: Lokacija
+condition_rules: Pravila Uslova
 input: Unos
-item_revision: Revizija stavke
+maps: Mape
+switch_user: Promeni Korisnika
+item_creation: Kreiranje Predmeta
+item_revision: Revizija Stavke
+enter_a_name: Unesi ime...
 duplicate_field: Dupliraj
 half_width: Pola širine
 full_width: Puna širina
+group: Grupa
+export_items: Eksportuj Stavke
+and: I
+or: Ili
+init: Inicijalizuj
+dataset_too_large_currently_showing_n_items: Skup podataka je prevelik. Trenutno se prikazuje prvih {n} stavki.
+modifier: Modifikator
+extension_interface: Interfejs
+extension_display: Prikaz
+extension_layout: Izgled
+extension_hook: Hook
+extension_modules: Moduli
+custom: Prilagođeno
+hook: Hook
 fill_width: Popunjeno
 field_name_translations: Prevodi Polja
 enter_password_to_enable_tfa: Unesite vašu lozinku kako biste uključili dvostruku potvrdu autentičnosti
 add_field: Dodaj Polje
 role_name: Naziv uloge
+branch: Grana
+leaf: List
+indeterminate: Neodređeno
+edit_collection: Izmeni Kolekciju
+exclusive: Ekskluzivan
+children: Deca
+db_only_click_to_configure: 'Samo za bazu podataka: Kliknite za Podešavanje'
+show_active_items: Prikaži Aktivne Stavke
 show_archived_items: Prikaži arhivirane stavke
+show_all_items: Prikaži Sve Stavke
 edited: Vrijednost izmijenjena
 required: Obavezno
 required_for_app_access: Obavezno za pristup aplikaciji
 requires_value: Zahtijeva vrijednost
 create_preset: Napravi Izgled
+create_panel: Kreiraj Panel
 create_role: Napravi ulogu
 create_user: Napravi korisnika
+message: Poruka
+delete_panel: Obriši Panel
 create_webhook: Napravi Webhook
 invite_users: Pozovi korisnike
 invite: Pozovi
 email_already_invited: Na ovu "{email}" adresu je već poslat poziv
+subject: Naslov
+inbox: Primljeno
 emails: Email adrese
 connection_excellent: Odlična konekcija
 connection_good: Dobra konekcija
@@ -41,25 +105,21 @@ update_bookmark: Ažuriraj oznaku
 delete_bookmark: Obriši oznaku
 delete_bookmark_copy: >-
   Da li ste sigurni da želite da obrišete "{bookmark}" oznaku? Ova operacija je trajna.
+delete_personal_bookmark: Izbrišite Lični Obeleživač
+delete_role_bookmark: Izbrišite Lični Obeleživač
+delete_global_bookmark: Izbrišite Globalni Obeleživač
 logoutReason:
   SIGN_OUT: Odjavljen
   SESSION_EXPIRED: Sesija je istekla
+public_label: Javno
 public_description: Kontroliše koji podaci sa API su dostupni bez potrebe za provjerom autentičnosti korisnika.
 not_allowed: Nije dozvoljeno
-directus_version: Directus verzija
-node_version: Node Verzija
-node_uptime: Node Aktivno vrijeme rada
-os_type: OS tip
-os_version: OS Verzija
-os_uptime: OS Aktivno vrijeme rada
-os_totalmem: OS Memorija
 archive: Arhiviraj
 archive_confirm: Da li ste sigurni da želite da arhivirate ovu stavku?
 archive_confirm_count: >-
   Nema odabranih stavki | Da li ste sigurni da želite da arhivirate ovu stavku? | Da li ste sigurni da želite da arhivirate ovih {count} stavki?
 reset_system_permissions_to: 'Poništi Sistemske Dozvole na:'
 reset_system_permissions_copy: Ova operacija će prepisati sve prilagođene dozvole koje ste primjenili na sistemske kolekcije. Da li ste sigurni?
-the_following_are_minimum_permissions: Sljedeće su minimalne dozvole koje su potrebne kada je omogućen "Pristup Aplikaciji". Možete proširiti dozvole i izvan ovoga, ali ne i ispod.
 app_access_minimum: Minimalan pristup aplikaciji
 recommended_defaults: Preporučene postavke
 unarchive: Vrati iz arhive
@@ -179,6 +239,7 @@ o2m_relationship: One to Many Relacija
 m2m_relationship: Many to Many Relacija
 m2a_relationship: Many to Any Relacija
 invalid_item: Nevažeća Stavka
+modal: Modalni
 next: Sljedeća
 field_name: Naziv Polja
 translations: Prevodi
@@ -240,6 +301,7 @@ move: Premjesti
 system: Sistem
 add_field_related: Dodaj Polje u Povezanu Kolekciju
 interface_label: Interfejs
+display_label: Prikaz
 today: Danas
 yesterday: Juče
 delete_comment: Obriši komentar
@@ -277,7 +339,6 @@ dimensions: Dimenzije
 size: Veličina
 created: Kreiran
 modified: Izmijenjeno
-checksum: Kontrolni zbir
 owner: Vlasnik
 edited_by: Izmijenjeno od
 folder: Fascikla
@@ -317,10 +378,8 @@ selecting_items: Odabir stavki
 enable_select_button: Omogući Dugme za Odabir
 comments: Komentari
 no_comments: Nema komentara
-click_to_expand: Klikni za proširivanje
 select_item: Odaberi Stavku
 no_items: Nema stavki
-search_items: Pretraži Stavke...
 disabled: Isključeno
 information: Informacija
 report_bug: Prijavi Propust
@@ -611,10 +670,10 @@ editing_unit: 'Uređivanje {unit}'
 editing_in_batch: 'Grupna izmjena {count} stavki'
 no_options_available: Nema dostupnih opcija
 settings_data_model: Model Podataka
-settings_permissions: Uloge & Dozvole
-settings_project: Podešavanje Projekta
+settings_project: Podešavanja
 settings_webhooks: Webhooks
-settings_presets: Izgledi & Oznake
+settings_presets: Oznake
+settings_translations: Prevodi
 one_or_more_options_are_missing: Jedna ili više opcija nedostaje
 scope: Opseg
 select: Odaberite...
@@ -642,7 +701,6 @@ page_help_files_collection: >-
   **Biblioteka Fajlova** — Lista svih stavki koje su skladištene unutar ovog projekta. Prilagodite izgled, filtere, i način sortiranja kako odgovara vašim potrebama, pa čak sačuvajte i oznake ovih različitih konfiguracija za brzi pristup.
 page_help_files_item: >-
   **Detalji Fajla** — Forma za uređivanje metapodataka fajla, izmjena originalnog stanja, i ažuriranje podešavanja pristupa.
-page_help_settings_project: "**Podešavanje Projekta** — Globalna konfiguraciona podešavanja projekta."
 page_help_settings_datamodel_collections: >-
   **Model Podataka: Kolekcije** — Lista svih dostupnih kolekcija. Ovo uključuje vidljive, sakrivene, i sistemske kolekcije, kao i neuređene tabele baze podataka koje mogu biti dodane.
 page_help_settings_datamodel_fields: >-
@@ -732,7 +790,6 @@ fields:
     description: Opis
     tags: Tagovi
     language: Jezik
-    theme: Tema
     tfa_secret: Dvostruka potvrda Autentičnosti
     status: Status
     status_active: Aktivan
@@ -751,6 +808,7 @@ fields:
     auth_password_policy: Polisa Lozinke za autentikaciju
     auth_login_attempts: Broj pokušaja prijave
     custom_css: Prilagođeni CSS
+    module_bar: Modul Bar
   directus_shares:
     name: Ime
     role: Uloga
@@ -816,6 +874,8 @@ save_current_datetime: Sačuvaj Trenutni Datum/Vrijeme
 block: Blok
 inline: Linijski
 comment: Komentar
+live_preview:
+  new_window: Otvori u Novom Prozoru
 relational_triggers: Relacioni Okidači
 referential_action_field_label_m2o: Kod Brisanja {collection}...
 referential_action_field_label_o2m: Kod Poništenog odabira {collection}...
@@ -979,6 +1039,8 @@ interfaces:
   system-interface-options:
     interface-options: Opcije Interfejsa
     description: Modalni prozor za odabir opcija interfejsa
+  system-display:
+    display: Prikaz
   list-m2m:
     many-to-many: Many to Many
     description: Odaberi više povezanih stavki
@@ -1004,8 +1066,6 @@ interfaces:
     one-to-many: One to Many
     description: Odaberi više povezanih stavki
     no_collection: Kolekciju nije moguće pronaći
-  system-folder:
-    folder: Fascikla
   select-radio:
     radio-buttons: Radio dugmići
     description: Odaberi jednu od više ponuđenih opcija
@@ -1015,8 +1075,8 @@ interfaces:
     edit_fields: Izmijeni Polja
     add_label: '"Napravi Novi" Labela'
     sort: Sortiranje
-    field_name_placeholder: Unesi ime polja...
     field_note_placeholder: Unesi napomenu polja...
+    interface_group: Opcije Interfejsa
   slider:
     slider: Slajder
     description: Odaberi broj uz pomoć slajdera
@@ -1078,6 +1138,14 @@ interfaces:
     toolbar: Traka sa alatkama
     custom_formats: Prilagođeni Formati
     options_override: Opcije Prepisivanja
+  input-block-editor:
+    tools: Traka sa alatkama
+    tools_options:
+      embed: Ugradi
+      code: Kod
+      image: Slika
+      table: Tabela
+      underline: Podvučeno
   input-autocomplete-api:
     input-autocomplete-api: Autokompletirani Ulaz (API)
     description: Tip pretrage za spoljašne API vrijednosti.
@@ -1206,11 +1274,29 @@ layouts:
     end_date_field: Polje Završnog Datuma
   kanban:
     crop: Isjecanje
+both: Oba
 panels:
   label:
     name: Oznaka
 operations:
+  json-web-token:
+    token: Token
+    options: Opcije
+  log:
+    message: Poruka
+  mail:
+    template: Šablon
   notification:
     recipient: Korisnik
+    message: Poruka
+    subject: Naslov
   request:
     url: URL adresa
+standard: Uobičajeno
+compact: Kompaktno
+style: Stil
+fonts:
+  normal: Normalno
+  bold: Podebljano
+  italic: Kurziv
+  auto: Automatski

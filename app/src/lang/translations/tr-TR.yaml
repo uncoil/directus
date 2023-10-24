@@ -35,6 +35,7 @@ tile_size: Blok boyutu
 edit_field: Alanı Düzenle
 conditions: Koşullar
 location: Konum
+collection_names_are_case_sensitive: Koleksiyon adları büyük/küçük harfe duyarlıdır
 condition_rules: Durum Kuralları
 input: Girdi
 maps: Haritalar
@@ -52,7 +53,15 @@ or: Veya
 init: Başlangıç
 dataset_too_large_currently_showing_n_items: Veri kümesi çok büyük. Şu anda ilk {n} öğe gösteriliyor.
 modifier: Düzenleyici
+extension_interface: Arayüz
+extension_display: Göster
+extension_layout: Yerleşim
+extension_panel: Panel
+extension_hook: Kanca
+extension_modules: Modüller
+enable: Etkinleştir
 custom: Özel
+hook: Kanca
 fill_width: Genişliği Doldur
 field_name_translations: Alan Adı Çevirileri
 enter_password_to_enable_tfa: İki Faktörlü Kimlik Doğrulamayı etkinleştirmek için parolanızı girin
@@ -79,14 +88,10 @@ create_user: Kullanıcı Oluştur
 message: Mesaj
 delete_panel: Paneli Sil
 create_webhook: Webhook Oluşturun
-create_translation_string: Çeviri Dizesi Oluştur
-no_translation_string: Çeviri Dizesi Yok
-no_translation_string_copy: Henüz çeviri dizesi yok.
-translation_string_key_placeholder: Çeviri dizesi anahtarı...
-translation_string_translations_placeholder: Yeni çeviri ekle
-edit_translation_string: Çeviri Dizesini Düzenle
-delete_translation_string_copy: >-
-  "{key}" çeviri dizesini silmek istediğinizden emin misiniz? Bu eylem geri alınamaz.
+create_custom_translation: Özel Çeviri Oluştur
+edit_custom_translation: Özel Çeviriyi Düzenle
+no_custom_translations: Özel Çeviri Yok
+no_custom_translations_copy: Henüz bir özel çeviri bulunmamakta.
 invite_users: Kullanıcıları Davet Et
 invite: Davet Et
 email_already_invited: E-posta "{email}" zaten davet edildi
@@ -102,6 +107,7 @@ rename_folder: Klasörü Yeniden Adlandır
 delete_folder: Klasörü Sil
 prefix: Prefiks
 suffix: Suffiks
+promote_version_preview: Önizleme
 reset_bookmark: Yer İşaretini Sıfırla
 update_bookmark: Yer İşaretini Güncelle
 delete_bookmark: Yer İşaretini Kaldır
@@ -117,20 +123,13 @@ public_label: Herkese Açık
 public_description: Kimlik doğrulaması olmadan hangi API verilerinin kullanılabileceğini kontrol eder.
 admin_description: Sınırsız Uygulama/API erişimine sahip ilk yönetici rolü.
 not_allowed: İzin Verilmedi
-directus_version: Directus Versiyon
-node_version: Node Versiyon
-node_uptime: Node Hizmet Zamanı
-os_type: OS Tip
-os_version: OS Versiyon
-os_uptime: OS Hizmet Zamanı
-os_totalmem: OS Bellek
 archive: Arşiv
 archive_confirm: Bu öğeyi arşivlemek istediğinizden emin misiniz?
 archive_confirm_count: >-
   Hiçbir Öğe Seçilmedi | Bu öğeyi arşivlemek istediğinizden emin misiniz? | Seçilen {count} öğeyi arşivlemek istediğinizden emin misiniz?
 reset_system_permissions_to: 'Sistem Yetkilerini Sıfırla:'
 reset_system_permissions_copy: Bu işlem sistem koleksiyonlarına vermiş olabileceğiniz özel izinlerin üstüne yazacaktır. Emin misiniz?
-the_following_are_minimum_permissions: Homm
+the_following_are_minimum_permissions: '"Uygulama Erişimi" etkinleştirildiğinde aşağıdaki minimum izinler otomatik olarak uygulanır. Gerekirse ek izinler verebilirsiniz, ancak izinleri bu seviyenin altına düşüremezsiniz.'
 app_access_minimum: Minimum Uygulama Erişimi
 recommended_defaults: Önerilen Varsayılanlar
 unarchive: Arşivden Çıkar
@@ -155,6 +154,14 @@ validationError:
   required: Değer gereklidir
   unique: Değer benzersiz olmalı
   regex: Değer doğru biçime sahip değil
+  starts_with: Değer {substring} ile başlamalıdır
+  istarts_with: Değer {substring} ile başlamalıdır
+  nstarts_with: Değer {substring} ile başlayamaz
+  nistarts_with: Değer {substring} ile başlayamaz
+  ends_with: Değer {substring} ile bitmelidir
+  iends_with: Değer {substring} ile bitmelidir
+  nends_with: Değer {substring} ile bitemez
+  niends_with: Değer {substring} ile bitemez
 all_access: Tam Erişim
 no_access: Erişim Yok
 use_custom: Özelleştirilmiş
@@ -181,6 +188,7 @@ permissions_for_role: '{role} rolünün, {action} yapabileceği öğeler.'
 fields_for_role: '{role} rolünün, {action} yapabileceği alanlar.'
 validation_for_role: '{action} alanı, {role} rolünün uyması gereken kuralları belirler.'
 presets_for_role: '{role} rolü için varsayılan alan değeri.'
+presets_field_warning: '"{field}" alanı için ilişkisel ön ayarlar "ayrıntılı" sözdizimiyle yapılandırılmalıdır.'
 presentation_and_aliases: Sunumlar
 revision_post_create: Öğe oluşturulduğunda böyle gözüküyordu.
 revision_post_update: Öğe güncellendikten sonra böyle gözüküyordu.
@@ -236,6 +244,7 @@ bigInteger: Büyük Tamsayı
 boolean: Evet/Hayır
 date: Tarih
 date_range: Tarih Aralığı
+translation_key_placeholder: Bir anahtar girin...
 datetime: Tarih ve Zaman
 dateTime: Tarih ve Zaman
 precision: Hassasiyet
@@ -244,6 +253,7 @@ float: Ondalıklı Sayı
 integer: Tamsayı
 json: JSON
 xml: XML
+yaml: YAML
 string: Yazı
 text: Metin
 time: Zaman
@@ -274,6 +284,7 @@ fields_group: Alanlar Grubu
 no_collections_found: Hiç Koleksiyon bulunamadı.
 new_data_alert: 'Veri Modelinizde aşağıdakiler oluşturulacaktır:'
 search_collection: Koleksiyonu Ara...
+search_field: Öğe ara...
 new_field: 'Yeni Alan'
 new_collection: 'Yeni Koleksiyon'
 add_m2o_to_collection: '"{collection}" Koleksiyonuna M2O İlişki Ekle'
@@ -293,6 +304,10 @@ o2m_relationship: Birden Çoka İlişki
 m2m_relationship: Çoktan Çoka İlişki
 m2a_relationship: Çoktan Herhangi Bire İlişki
 invalid_item: Geçersiz Öğe
+require_confirmation: Doğrulama Gerekiyor
+dialog: Diyalog
+modal: Açılır Pencere
+confirmation_description: Onay Açıklaması
 next: Sonraki
 field_name: Alan Adı
 translations: Çeviriler
@@ -347,7 +362,7 @@ revision_delta_reverted: Geri Alındı
 revision_delta_update_message: Bu alan güncellenmiştir ancak değeri güvenlik nedeniyle gizlenmektedir.
 revision_delta_other: Revizyon
 revision_delta_by: '{user} tarafından {date} tarihinde'
-presentation_text_values_cannot_be_reimported: "Sunum metnini kullanır, değerler yeniden içe aktarılamaz."
+presentation_text_values_cannot_be_reimported: 'Sunum metnini kullanır, değerler yeniden içe aktarılamaz.'
 download_page_as_csv: 'Sayfayı CSV olarak indir'
 private_user: Gizli Kullanıcı
 creation_preview: Oluşturma Önizlemesi
@@ -385,6 +400,7 @@ move: Taşı
 system: Sistem
 add_field_related: İlişkili Koleksiyona Alan Ekle
 interface_label: Arayüz
+display_label: Göster
 today: Bugün
 yesterday: Dün
 delete_comment: Yorumu Sil
@@ -435,7 +451,6 @@ dimensions: Boyutlar
 size: Boyut
 created: Oluşturulma Tarihi
 modified: Değiştirildi
-checksum: Checksum
 owner: Sahip
 edited_by: Düzenleyen
 folder: Klasör
@@ -458,11 +473,8 @@ open_file_in_tab: Dosyayı yeni sekmede aç
 start_export: Dışa Aktarmayı Başlat
 not_available_for_local_downloads: Yerel indirmeler için mevcut değil
 exporting_all_items_in_collection: '{collection} içindeki tüm {total} öğe dışa aktarılıyor.'
-exporting_limited_items_in_collection: '{collection} içindeki {total} öğeden {limit} dışa aktarılıyor.'
-exporting_no_items_to_export: Dışa aktarılacak öğe yok. Aşağıdaki dışa aktarma yapılandırmasını ayarlayın.
-exporting_download_hint: Tamamlandığında, bu {format} dosyası otomatik olarak cihazınıza indirilecektir.
-exporting_batch_hint: Bu dışa aktarma, gruplar halinde işlenecek ve tamamlandıktan sonra {format} dosyası Dosya Kitaplığına kaydedilecektir.
-exporting_batch_hint_forced: Çok sayıda öğe nedeniyle, bu dışa aktarma toplu olarak işlenecek ve tamamlandıktan sonra {format} dosyası Dosya Kitaplığına kaydedilecektir.
+exporting_download_hint: '{format} dosyası oluşturulduktan sonra cihazınıza indirilecektir.'
+exporting_library_hint: '{format} dosyası oluşturulduktan sonra Dosya Kitaplığına kaydedilecektir.'
 collection_key: Koleksiyon Anahtarı
 name: İsim
 primary_key_field: Birincil Anahtar Alanı
@@ -487,10 +499,8 @@ enable_select_button: Seç Butonunu Etkinleştir
 allow_duplicates: Çiftlere İzin Ver
 comments: Yorumlar
 no_comments: Henüz Yorum Yok
-click_to_expand: Genişletmek için Tıklayın
 select_item: Öğe Seçin
 no_items: Hiç öğe yok
-search_items: Öğeleri ara...
 disabled: Devre Dışı
 information: Bilgi
 report_bug: Hata Bildir
@@ -571,6 +581,8 @@ select_an_item: Bir Öğe Seçin...
 edit: Düzenle
 enabled: Etkin
 disable_tfa: 2FA'yı Devre Dışı Bırak
+admin_disable_tfa_text: Yönetici tarafından 2FA devre dışı bırak?
+tfa_setup: 2 Adımlı doğrulamayı kur
 tfa_scan_code: 2 Adımlı doğrulama için doğrulayıcı uygulamanızdan kodu taratın
 enter_otp_to_disable_tfa: 2FA'yı devre dışı bırakmak için OTP girin
 create_account: Hesap Oluştur
@@ -596,7 +608,6 @@ errors:
   RECORD_NOT_UNIQUE: Yinelenen değer algılandı
   USER_SUSPENDED: Kullanıcı Askıya Alındı
   CONTAINS_NULL_VALUES: Alan null değer içeriyor
-  UNPROCESSABLE_ENTITY: İşlenemeyen varlık
   INTERNAL_SERVER_ERROR: Beklenmeyen Hata
   NOT_NULL_VIOLATION: Değer null olamaz
   ILLEGAL_ASSET_TRANSFORMATION: Resim kaynağı önizleme için çok büyük
@@ -712,6 +723,7 @@ operators:
   nintersects: Kesişmeyen
   intersects_bbox: Sınırlayıcı kutuyla kesişen
   nintersects_bbox: Sınırlayıcı kutuyla kesişmeyen
+  regex: Eşleşen Düzenli ifadeler (RegExp)
 custom_validation_message: Özel Doğrulama Mesajı
 loading: Yükleniyor...
 drop_to_upload: Yüklemek için Dosyayı Buraya Bırakın
@@ -750,6 +762,8 @@ add_file: Dosya Ekle
 replace_file: Dosyayı Değiştir
 no_results: Sonuç Yok
 no_results_copy: Sonuçları görmek için arama filtrelerini ayarlayın veya temizleyin.
+no_visible_fields: Boş Form
+no_visible_fields_copy: Bu formun gösterilebilir öğesi yok.
 clear_filters: Filtreleri Temizle
 saves_automatically: Otomati̇k Olarak Kaydedilir
 role: Rol
@@ -779,8 +793,9 @@ label: Etiket
 flows: Akışlar
 flow: Akış
 select_a_flow: Bir Akış Seç
-run_flow_on_current: Geçerli Öğede akışı çalıştır
+run_flow_confirm: Bu komut dosyasını çalıştırmak istediğinize emin misiniz?
 run_flow_on_current_edited_confirm: Bu öğe bu akış tarafından güncellenebilir, yürütmek istediğinizden emin misiniz?
+run_flow_success: Akış "{flow}" çalıştırma başarılı
 trigger: Tetikleme
 trigger_options: Tetikleyici Seçenekleri
 view_trigger: Tetikleyiciyi Görüntüle
@@ -792,6 +807,7 @@ set_flow_active: Akışı Etkin Olarak Ayarla
 set_flow_inactive: Akışı Etkin Değil Olarak Ayarla
 edit_flow: Akışı Düzenle
 delete_flow: Akışı Sil
+no_other_flows_copy: Henüz bir akışınız yok.
 no_flows: Akış yok
 no_flows_copy: Henüz Akışınız yok.
 create_flow: Akış Oluştur
@@ -822,6 +838,7 @@ panel_header: Panel Başlığı
 panel_name_placeholder: Panele bir ad verin...
 panel_note_placeholder: Bu panel hakkında opsiyonel detaylar...
 panel_delete_confirm: Bu paneli silmek istediğinize emin misiniz? Bu işlem geri alınamaz.
+list_panel_allow_edit: İç içe düzenlemeye izin ver
 dashboard_delete_confirm: Bu panoyu silmek istediğinize emin misiniz? Bu işlem geri alınamaz.
 edit_dashboard: Panoyu Düzenle
 delete_dashboard: Panoyu Sil
@@ -933,12 +950,11 @@ editing_unit: '{unit} Düzenleniyor'
 editing_in_batch: '{count} Öge Toplu Olarak Düzenleniyor'
 no_options_available: Hiç seçenek yok
 settings_data_model: Veri Modeli
-settings_permissions: Roller ve Yetkiler
-settings_project: Proje Ayarları
+settings_project: Ayarlar
 settings_webhooks: Webhooklar
 settings_flows: Akışlar
-settings_presets: Ön Ayarlar ve Yer İşaretleri
-settings_translation_strings: Çeviri Dizeleri
+settings_presets: Yer İmleri
+settings_translations: Çeviriler
 one_or_more_options_are_missing: Bir ya da birden fazla seçenek eksik
 scope: Kapsam
 actions: Aksiyonlar
@@ -973,7 +989,6 @@ page_help_files_collection: >-
   **Dosya Kütüphanesi** —Bu projeye yüklenen tüm dosyaları listeler. Yerleşimi, filtreleri ve sıralamayı isteğine göre uyarla, üstelik bu seçenekleri hızlı erişim için yer işareti olarak kaydedebilirsin.
 page_help_files_item: >-
   **Dosya Detayı** — Dosya metaverilerini yönetmek, orijinal dosyayı düzenlemek ve erişim seçeneklerini güncellemek için bir form/sayfa.
-page_help_settings_project: "**Proje Ayarları** — Projenin genel konfigürasyon seçenekleri."
 page_help_settings_datamodel_collections: >-
   **Veri Modeli: Koleksiyonlar** — Tüm uygun koleksiyonları listeler. Bu görünür, gizli, sistem koleksiyonları ve dağınık veritabanı tablolarını içerir.
 page_help_settings_datamodel_fields: >-
@@ -1015,9 +1030,11 @@ directus_collection:
   directus_dashboards: Panolar modülündeki panolar
   directus_fields: Ek alan ayarları ve metaveri
   directus_files: Yönetilen tüm dosyalar için metaveri
+  directus_flows: Otomasyon akışları
   directus_folders: Dosyalar için sanal klasörler sunar
   directus_migrations: Veritabanının hangi sürümünü kullanıyorsunuz
   directus_notifications: Bildirimler kullanıcılara gönderildi
+  directus_operations: Akışların içerisindeki operasyonlar
   directus_panels: Panolar modülündeki panolardaki tekil paneller
   directus_permissions: Her bir rol için yetkilere eriş
   directus_presets: Koleksiyon varsayılanları ve yer işaretleri için ön ayarlar
@@ -1093,10 +1110,6 @@ fields:
     tags: Etiketler
     user_preferences: Kullanıcı Tercihleri
     language: Dil
-    theme: Tema
-    theme_auto: Otomatik (Sisteme Göre)
-    theme_light: Açık Mod
-    theme_dark: Koyu Mod
     tfa_secret: İki Faktörlü Kimlik Doğrulama
     admin_options: Yönetici Seçenekleri
     status: Durum
@@ -1134,7 +1147,6 @@ fields:
     project_color: Proje Rengi
     project_logo: Proje Logosu
     default_language: Varsayılan Dil
-    branding: Markalama ve Stil
     public_foreground: Herkese Açık Ön Plan
     public_background: Herkese Açık Arkaplan
     public_note: Herkese Açık Not
@@ -1144,12 +1156,14 @@ fields:
     storage_default_folder: Varsayılan Klasör
     storage_asset_presets: Transformasyon Ön Ayarları
     storage_asset_transform: İzin Verilen Transformasyonlar
+    overrides: Geçersiz Kılınmış Uygulama Yolları
     custom_css: Özel CSS
     module_bar: Kenar Çubuğu
     transformations_all: Tüm transformasyonlara izin ver
     transformations_none: Transformasyonları devre dışı bırak
     transformations_presets: Transformasyonları aşağıdaki ön ayarlar ile sınırla
     image_editor: Resim Düzenleyici
+    custom_aspect_ratios: Özel ilişkiler
   directus_shares:
     name: Ad
     role: Rol
@@ -1192,7 +1206,6 @@ field_options:
   directus_settings:
     project_name_placeholder: Benim projem...
     project_color_note: Oturum Açma ve Logo Arkaplanı
-    project_logo_note: Beyaz 40x40 SVG/PNG
     public_note_placeholder: Herkese açık markdown biçimlendirmesi destekleyen kısa bir mesaj...
     security_divider_title: Güvenlik
     auth_password_policy:
@@ -1217,6 +1230,7 @@ field_options:
     basemaps_tile: Raster TileJSON
     basemaps_style: Mapbox Stili
     files_divider_title: Dosya ve Küçük Resimler
+    overrides_divider_title: Uygulamada yönlendirme
   directus_activity:
     login: Oturum Açma
     create: Oluşturma
@@ -1245,6 +1259,7 @@ field_options:
     sort_field: Bir alan seçin...
     accountability_divider: İzlenebilirlik
     duplication_divider: Çoğaltma
+    preview_divider: Önizleme
   directus_files:
     title: Benzersiz bir başlık...
     description: Opsiyonel bir açıklama...
@@ -1302,6 +1317,8 @@ start_collapsed: Kapalı Başla
 block: Blok
 inline: Hizada
 comment: Yorum
+live_preview:
+  new_window: Yeni Pencerede Aç
 shares: Paylaşımlar
 unlimited_usage: Limitsiz kullanım
 uses_left: Hiç kullanım kalmadı | 1 kullanım kaldı | {n} kullanım kaldı
@@ -1408,6 +1425,7 @@ export_started_copy: Dışa aktarma başladı. İndirilmeye hazır olduğunda bi
 sort_asc: Artan Şekilde Sırala
 sort_desc: Azalan Şekilde Sırala
 template: Şablon
+require_value_to_be_set: Oluşturmada değer gerektir
 translation: Çeviri
 translation_placeholder: Bir çeviri girin...
 value: Değer
@@ -1529,6 +1547,7 @@ interfaces:
     allow_none_label: Seçim Yapılmamasına İzin Ver
     choices_name_placeholder: Bir isim girin...
     choices_value_placeholder: Bir değer girin...
+    preview_threshold: Önizleme Eşiği
   select-multiple-dropdown:
     select-multiple-dropdown: Açılır Liste (Çoklu)
     description: Açılır Listeden birden fazla değer seç
@@ -1559,9 +1578,12 @@ interfaces:
   system-interface-options:
     interface-options: Arayüz Seçenekleri
     description: Arayüz seçeneklerini seçmek için açılır pencere
+  system-display:
+    display: Göster
   list-m2m:
     many-to-many: Çoktan Çoka
     description: Birden fazla ilişkili kesişim öğesi seçin
+    columns_configure_notice: Bu alanı oluşturduktan sonra sütunları yapılandırabilirsiniz.
     display_template_configure_notice: Görüntüleme şablonunu bu alanı oluşturduktan sonra yapılandırabilirsin.
   select-dropdown-m2o:
     many-to-one: Çoktan Bire
@@ -1606,9 +1628,7 @@ interfaces:
     description: Birden fazla ilişkili öğe seçin
     no_collection: Koleksiyon bulunamadı
   system-folder:
-    folder: Klasör
     description: Bir klasör seçin
-    field_hint: Yüklenen dosyalar için bir klasör. Varolan dosyaları etkilemez.
     root_name: Dosya Kütüphanesi Kökü
     system_default: Sistem Varsayılanları
   select-radio:
@@ -1621,8 +1641,9 @@ interfaces:
     add_label: '"Yeni Oluştur" Başlığı'
     sort: Sırala
     sort_placeholder: Elle
-    field_name_placeholder: Alan adı girin...
     field_note_placeholder: Alan notu girin...
+    incompatible_data: Mevcut veriler tekrarlayıcı ile uyumlu değildir ve tekrarlayıcıya veri eklenirken üzerine yazılacaktır
+    interface_group: Arayüz Seçenekleri
   slider:
     slider: Kaydırgaç
     description: Kaydırgaçı kullanarak bir sayı seçin
@@ -1662,7 +1683,6 @@ interfaces:
     input-translated-string: Çevrilmiş Dizeler
     description: Çeviri dizesi seçin veya ekleyin
     search_placeholder: Ara...
-    new_translation_string: Yeni Çeviri Dizesi
   boolean:
     toggle: Aç/Kapat
     description: Açık ve kapalı arasında geçiş yap
@@ -1699,6 +1719,16 @@ interfaces:
     folder_note: Yüklenen dosyalar için bir klasör. Varolan dosyaları etkilemez.
     imageToken: Statik Erişim Anahtarı
     imageToken_label: Statik erişim anahtarı dosyaların URL'lerinin sonuna eklenir
+  input-block-editor:
+    tools: Araç Çubuğu
+    tools_options:
+      header: Header
+      nestedlist: Liste
+      embed: Yerleştir
+      code: Kod
+      image: Fotoğraf
+      table: Tablo
+      underline: Alt Çizgi
   input-autocomplete-api:
     input-autocomplete-api: Otomatik Tamamlamalı Girdi (API)
     description: Dış API değerleri için otomatik tamamlamalı arama.
@@ -1720,12 +1750,16 @@ interfaces:
     start_closed: Kapalı Başla
   system-token:
     system-token: Erişim Anahtarı (Token)
+    description: Kalıcı erişim anahtarlarını (token) yönet
+    placeholder: Yeni bir statik erişim belirteci oluşturmak için "Belirteç Oluştur"a tıklayın
     value_securely_saved: Değer Güvenli Bir Şekilde Kaydedildi
     generate: Erişim Anahtarı Üret
     regenerate: Yeniden Erişim Anahtarı Üret
+    generate_success_copy: Yukarıdaki belirteci yedeklediğinizden ve kopyaladığınızdan emin olun. Güvenlik nedeniyle, bu sayfayı kaydedip çıktıktan sonra jetonu tekrar göremeyeceksiniz.
     remove_token: Belirteci kaldır
   system-raw-editor:
     system-raw-editor: Ham Düzenleyici
+    description: Ham veya bıyık şablon değerlerinin girilmesine izin ver
 displays:
   translations:
     translations: Çeviriler
@@ -1769,6 +1803,7 @@ displays:
     strict: Katı
     strict_label: Katı birimler kullanın
     strict_note: '''Neredeyse'', ''bitti'', ''daha az'' gibi kelimeleri kaldırır'
+    round: Yuvarlak
     round_note: Kullanılacak bir yuvarlama işlevi seçin
     down: Aşağı
     nearest: En yakın
@@ -1884,9 +1919,54 @@ layouts:
     default_template: Koleksiyon Varsayılanı Kullanılıyor...
     no_compatible_fields: Hiç uyumlu alan yok
   kanban:
+    name: Tabela
+    group_field: Gruplama
+    group_field_placeholder: Alan gruplanıyor...
+    group_title: Grubun adı
+    group_title_placeholder: Alanlar gruplanıyor...
+    title: Kart başlığı
+    title_placeholder: İsteğe bağlı başlık alanı...
+    text: Harita metni
+    text_placeholder: İsteğe bağlı metin alanı...
+    date: Kaartdatum
+    date_placeholder: İsteğe bağlı tarih alanı...
+    tags: Kart Etiketleri
+    tags_placeholder: İsteğe bağlı etiket alanı...
+    user: Döşeme kullanıcıları
+    user_placeholder: İsteğe bağlı kullanıcı alanı...
+    image: Kiremit resmi
+    image_placeholder: İsteğe bağlı resim alanı...
+    image_fit: Kart resmi
     crop: Kırp
     advanced: Gelişmiş
+    edit_group: Grubu düzenle
+    delete_group: Grubu sil
+    add_group: Grup Ekle
+    add_group_placeholder: Yeni grubun adını girin...
+    show_ungrouped: Gruplanmamış göster
+    show: Göstermek
+    no_group: Grup yok
     not_all_loaded: Yalnızca ilk 1000 öğe yüklenebilir.
+horizontal: Yatay
+vertical: Dikey
+x_axis: X Ekseni
+y_axis: Y Ekseni
+y_axis_function: Y ekseni işlevi
+show_x_only: Yalnızca X eksenini göster
+show_y_only: Yalnızca Y eksenini göster
+show_data_label: Veri etiketini göster
+both: İkisi de
+function: İşlev
+half_circle: Yarım Daire
+full_circle: Tam Daire
+stroke_width: Fırça Genişliği
+rounded_stroke: Yuvarlak Kontur
+thin: İnce
+medium: Orta
+broad: Kalın
+show_labels: Etiketleri Göster
+right: Sağ
+left: Sol
 panels:
   metric:
     name: Metrik
@@ -1908,54 +1988,17 @@ panels:
   barchart:
     name: Grafik Çubuğu
     description: Değer gruplarını karşılaştırmak için çubuk veya sütun grafikler
-    select_field: Bir alan seçmelisiniz.
-    select_collection: Bir koleksiyon seçmelisiniz.
-    select_x_axis: Bir X Ekseni seçmelisiniz.
-    function: İşlev
     horizontal: Yatay
-    x_axis: X-Ekseni
-    y_axis_function: Y Ekseni Fonksiyonu
-    y_axis: Y-Ekseni
-    show_x_axis: X Eksenini Göster
-    show_y_axis: Y Eksenini Göster
-    show_data_label: Veri Etiketini Göster
-    group_by: Gruplandırılmış
-    group_and_function: Hem bir grubu hem de bir işlevi dahil etmeli veya atlamalısınız.
-    y_axis_NaN: Y ekseni bir sayı olmalıdır.
-    y_axis_conditional_two: bir sayı olmalıdır.
+    select_collection: Bir koleksiyon seçmelisiniz.
   linechart:
     name: Çizgi Grafik
-    select_field: Bir alan seçmelisiniz.
-    select_collection: Bir koleksiyon seçmelisiniz.
-    select_x_axis: Bir X Ekseni seçmelisiniz.
-    function: İşlev
-    x_axis: X-Ekseni
     disabled_no_grouping: Gruplandırma seçilmediğinde devre dışı bırakılır.
-    y_axis: Y-Ekseni
-    datasets: Veri Setleri
-    show_legend: Göstergeyi Göster
     show_marker: Araç İpucu İşaretçisini Göster
-    include_y_axis: Hiçbir grup belirtilmediğinde her veri kümesi için bir Y Ekseni eklemelisiniz.
-    group_and_function: Hem bir grubu hem de bir işlevi dahil etmeli veya atlamalısınız.
+    curve_type: Eğim Türü
     straight: Düz
   meter:
     name: Metre
     description: İzleme değerleri için sayaç
-    select_max_value: Bir maksimum değer seçmelisiniz.
-    max_greater_than_zero: Maksimum değer 0'dan büyük olmalıdır.
-    select_field: Bir alan seçmelisiniz.
-    select_collection: Bir koleksiyon seçmelisiniz.
-    function: İşlev
-    thin: İnce
-    medium: Orta
-    broad: Kalın
-  piechart:
-    function: İşlev
-    show_legend: Göstergeyi Göster
-    right: Sağ
-    bottom: Alt
-    monochrome: Tek Renkli
-    monochrome_color: Tek Renk
   variable:
     name: Global Değişken
     description: Diğer Panellerin filtrelerinde kullanım için global bir değer belirleyin
@@ -2025,6 +2068,10 @@ operations:
     key: Kimlikler
     payload: Yük
     query: Sorgula
+  json-web-token:
+    payload: Yük
+    token: Erişim Anahtarı (Token)
+    options: Seçenekler
   log:
     name: Konsolda Oturum Aç
     message: Mesaj
@@ -2034,14 +2081,16 @@ operations:
     description: Bir veya daha fazla kişiye e-posta gönderin
     to_placeholder: E-posta adreslerini ekleyin ve enter tuşuna basın...
     body: Gövde
+    template: Şablon
+    data: Veri
   notification:
     name: Bildirim Gönder
     description: Bir veya daha fazla kullanıcıya uygulama içi bildirim gönderin
     recipient: Kullanıcı
-    recipient_placeholder: Kullanıcı UUID'sini ekleyin ve enter tuşuna basın...
     message: Mesaj
+    subject: Konu
   request:
-    description: "Bir URL'ye istekte bulunun"
+    description: 'Bir URL''ye istekte bulunun'
     url: URL
     url_placeholder: https://example.com/example
     method: Metod
@@ -2061,3 +2110,15 @@ operations:
     flows: Akışlar
     flow: Akış
     data: Veri
+    serial: Seri No
+standard: Standart
+compact: Kompakt
+style: Stil
+fonts:
+  thin: İnce
+  normal: Normal
+  medium: Orta
+  bold: Kalın
+  black: Siyah
+  italic: İtalik
+  auto: Otomatik

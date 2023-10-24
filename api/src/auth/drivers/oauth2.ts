@@ -1,29 +1,34 @@
-import { BaseException } from '@directus/shared/exceptions';
-import { parseJSON } from '@directus/shared/utils';
+import { isDirectusError } from '@directus/errors';
+import type { Accountability } from '@directus/types';
+import { parseJSON } from '@directus/utils';
 import express, { Router } from 'express';
 import flatten from 'flat';
 import jwt from 'jsonwebtoken';
-import ms from 'ms';
-import { Client, errors, generators, Issuer } from 'openid-client';
-import { getAuthProvider } from '../../auth';
-import env from '../../env';
+import type { Client } from 'openid-client';
+import { errors, generators, Issuer } from 'openid-client';
+import { getAuthProvider } from '../../auth.js';
+import getDatabase from '../../database/index.js';
+import emitter from '../../emitter.js';
+import env from '../../env.js';
 import {
-	InvalidConfigException,
-	InvalidCredentialsException,
-	InvalidProviderException,
-	InvalidTokenException,
-	ServiceUnavailableException,
-} from '../../exceptions';
-import { RecordNotUniqueException } from '../../exceptions/database/record-not-unique';
-import logger from '../../logger';
-import { respond } from '../../middleware/respond';
-import { AuthenticationService, UsersService } from '../../services';
-import { AuthData, AuthDriverOptions, User } from '../../types';
-import asyncHandler from '../../utils/async-handler';
-import { getConfigFromEnv } from '../../utils/get-config-from-env';
-import { getIPFromReq } from '../../utils/get-ip-from-req';
-import { Url } from '../../utils/url';
-import { LocalAuthDriver } from './local';
+	ErrorCode,
+	InvalidCredentialsError,
+	InvalidProviderError,
+	InvalidProviderConfigError,
+	InvalidTokenError,
+	ServiceUnavailableError,
+} from '@directus/errors';
+import logger from '../../logger.js';
+import { respond } from '../../middleware/respond.js';
+import { AuthenticationService } from '../../services/authentication.js';
+import { UsersService } from '../../services/users.js';
+import type { AuthData, AuthDriverOptions, User } from '../../types/index.js';
+import asyncHandler from '../../utils/async-handler.js';
+import { getConfigFromEnv } from '../../utils/get-config-from-env.js';
+import { getIPFromReq } from '../../utils/get-ip-from-req.js';
+import { getMilliseconds } from '../../utils/get-milliseconds.js';
+import { Url } from '../../utils/url.js';
+import { LocalAuthDriver } from './local.js';
 
 export class OAuth2AuthDriver extends LocalAuthDriver {
 	client: Client;
@@ -36,11 +41,12 @@ export class OAuth2AuthDriver extends LocalAuthDriver {
 
 		const { authorizeUrl, accessUrl, profileUrl, clientId, clientSecret, ...additionalConfig } = config;
 
-		if (!authorizeUrl || !accessUrl || !profileUrl || !clientId || !clientSecret || !additionalConfig.provider) {
-			throw new InvalidConfigException('Invalid provider config', { provider: additionalConfig.provider });
+		if (!authorizeUrl || !accessUrl || !profileUrl || !clientId || !clientSecret || !additionalConfig['provider']) {
+			logger.error('Invalid provider config');
+			throw new InvalidProviderConfigError({ provider: additionalConfig['provider'] });
 		}
 
-		const redirectUrl = new Url(env.PUBLIC_URL).addPath('auth', 'login', additionalConfig.provider, 'callback');
+		const redirectUrl = new Url(env['PUBLIC_URL']).addPath('auth', 'login', additionalConfig['provider'], 'callback');
 
 		this.redirectUrl = redirectUrl.toString();
 		this.usersService = new UsersService({ knex: this.knex, schema: this.schema });
@@ -50,12 +56,12 @@ export class OAuth2AuthDriver extends LocalAuthDriver {
 			authorization_endpoint: authorizeUrl,
 			token_endpoint: accessUrl,
 			userinfo_endpoint: profileUrl,
-			issuer: additionalConfig.provider,
+			issuer: additionalConfig['provider'],
 		});
 
 		const clientOptionsOverrides = getConfigFromEnv(
-			`AUTH_${config.provider.toUpperCase()}_CLIENT_`,
-			[`AUTH_${config.provider.toUpperCase()}_CLIENT_ID`, `AUTH_${config.provider.toUpperCase()}_CLIENT_SECRET`],
+			`AUTH_${config['provider'].toUpperCase()}_CLIENT_`,
+			[`AUTH_${config['provider'].toUpperCase()}_CLIENT_ID`, `AUTH_${config['provider'].toUpperCase()}_CLIENT_SECRET`],
 			'underscore'
 		);
 
@@ -75,10 +81,10 @@ export class OAuth2AuthDriver extends LocalAuthDriver {
 	generateAuthUrl(codeVerifier: string, prompt = false): string {
 		try {
 			const codeChallenge = generators.codeChallenge(codeVerifier);
-			const paramsConfig = typeof this.config.params === 'object' ? this.config.params : {};
+			const paramsConfig = typeof this.config['params'] === 'object' ? this.config['params'] : {};
 
 			return this.client.authorizationUrl({
-				scope: this.config.scope ?? 'email',
+				scope: this.config['scope'] ?? 'email',
 				access_type: 'offline',
 				prompt: prompt ? 'consent' : undefined,
 				...paramsConfig,
@@ -102,10 +108,10 @@ export class OAuth2AuthDriver extends LocalAuthDriver {
 		return user?.id;
 	}
 
-	async getUserID(payload: Record<string, any>): Promise<string> {
-		if (!payload.code || !payload.codeVerifier || !payload.state) {
+	override async getUserID(payload: Record<string, any>): Promise<string> {
+		if (!payload['code'] || !payload['codeVerifier'] || !payload['state']) {
 			logger.warn('[OAuth2] No code, codeVerifier or state in payload');
-			throw new InvalidCredentialsException();
+			throw new InvalidCredentialsError();
 		}
 
 		let tokenSet;
@@ -114,9 +120,10 @@ export class OAuth2AuthDriver extends LocalAuthDriver {
 		try {
 			tokenSet = await this.client.oauthCallback(
 				this.redirectUrl,
-				{ code: payload.code, state: payload.state },
-				{ code_verifier: payload.codeVerifier, state: generators.codeChallenge(payload.codeVerifier) }
+				{ code: payload['code'], state: payload['state'] },
+				{ code_verifier: payload['codeVerifier'], state: generators.codeChallenge(payload['codeVerifier']) }
 			);
+
 			userInfo = await this.client.userinfo(tokenSet.access_token!);
 		} catch (e) {
 			throw handleError(e);
@@ -133,53 +140,79 @@ export class OAuth2AuthDriver extends LocalAuthDriver {
 
 		if (!identifier) {
 			logger.warn(`[OAuth2] Failed to find user identifier for provider "${provider}"`);
-			throw new InvalidCredentialsException();
+			throw new InvalidCredentialsError();
 		}
+
+		const userPayload = {
+			provider,
+			first_name: userInfo[this.config['firstNameKey']],
+			last_name: userInfo[this.config['lastNameKey']],
+			email: email,
+			external_identifier: identifier,
+			role: this.config['defaultRoleId'],
+			auth_data: tokenSet.refresh_token && JSON.stringify({ refreshToken: tokenSet.refresh_token }),
+		};
 
 		const userId = await this.fetchUserId(identifier);
 
 		if (userId) {
-			// Update user refreshToken if provided
-			if (tokenSet.refresh_token) {
-				await this.usersService.updateOne(userId, {
-					auth_data: JSON.stringify({ refreshToken: tokenSet.refresh_token }),
-				});
-			}
+			// Run hook so the end user has the chance to augment the
+			// user that is about to be updated
+			const updatedUserPayload = await emitter.emitFilter(
+				`auth.update`,
+				{ auth_data: userPayload.auth_data ?? null },
+				{
+					identifier,
+					provider: this.config['provider'],
+					providerPayload: { accessToken: tokenSet.access_token, userInfo },
+				},
+				{ database: getDatabase(), schema: this.schema, accountability: null }
+			);
+
+			// Update user to update refresh_token and other properties that might have changed
+			await this.usersService.updateOne(userId, updatedUserPayload);
+
 			return userId;
 		}
 
 		// Is public registration allowed?
 		if (!allowPublicRegistration) {
 			logger.warn(`[OAuth2] User doesn't exist, and public registration not allowed for provider "${provider}"`);
-			throw new InvalidCredentialsException();
+			throw new InvalidCredentialsError();
 		}
 
+		// Run hook so the end user has the chance to augment the
+		// user that is about to be created
+		const updatedUserPayload = await emitter.emitFilter(
+			`auth.create`,
+			userPayload,
+			{
+				identifier,
+				provider: this.config['provider'],
+				providerPayload: { accessToken: tokenSet.access_token, userInfo },
+			},
+			{ database: getDatabase(), schema: this.schema, accountability: null }
+		);
+
 		try {
-			await this.usersService.createOne({
-				provider,
-				first_name: userInfo[this.config.firstNameKey],
-				last_name: userInfo[this.config.lastNameKey],
-				email: email,
-				external_identifier: identifier,
-				role: this.config.defaultRoleId,
-				auth_data: tokenSet.refresh_token && JSON.stringify({ refreshToken: tokenSet.refresh_token }),
-			});
+			await this.usersService.createOne(updatedUserPayload);
 		} catch (e) {
-			if (e instanceof RecordNotUniqueException) {
+			if (isDirectusError(e, ErrorCode.RecordNotUnique)) {
 				logger.warn(e, '[OAuth2] Failed to register user. User not unique');
-				throw new InvalidProviderException();
+				throw new InvalidProviderError();
 			}
+
 			throw e;
 		}
 
 		return (await this.fetchUserId(identifier)) as string;
 	}
 
-	async login(user: User): Promise<void> {
+	override async login(user: User): Promise<void> {
 		return this.refresh(user);
 	}
 
-	async refresh(user: User): Promise<void> {
+	override async refresh(user: User): Promise<void> {
 		let authData = user.auth_data as AuthData;
 
 		if (typeof authData === 'string') {
@@ -190,9 +223,10 @@ export class OAuth2AuthDriver extends LocalAuthDriver {
 			}
 		}
 
-		if (authData?.refreshToken) {
+		if (authData?.['refreshToken']) {
 			try {
-				const tokenSet = await this.client.refresh(authData.refreshToken);
+				const tokenSet = await this.client.refresh(authData['refreshToken']);
+
 				// Update user refreshToken if provided
 				if (tokenSet.refresh_token) {
 					await this.usersService.updateOne(user.id, {
@@ -210,23 +244,23 @@ const handleError = (e: any) => {
 	if (e instanceof errors.OPError) {
 		if (e.error === 'invalid_grant') {
 			// Invalid token
-			logger.trace(e, `[OAuth2] Invalid grant`);
-			return new InvalidTokenException();
+			logger.warn(e, `[OAuth2] Invalid grant`);
+			return new InvalidTokenError();
 		}
 
 		// Server response error
-		logger.trace(e, `[OAuth2] Unknown OP error`);
-		return new ServiceUnavailableException('Service returned unexpected response', {
+		logger.warn(e, `[OAuth2] Unknown OP error`);
+		return new ServiceUnavailableError({
 			service: 'oauth2',
-			message: e.error_description,
+			reason: `Service returned unexpected response: ${e.error_description}`,
 		});
 	} else if (e instanceof errors.RPError) {
 		// Internal client error
-		logger.trace(e, `[OAuth2] Unknown RP error`);
-		return new InvalidCredentialsException();
+		logger.warn(e, `[OAuth2] Unknown RP error`);
+		return new InvalidCredentialsError();
 	}
 
-	logger.trace(e, `[OAuth2] Unknown error`);
+	logger.warn(e, `[OAuth2] Unknown error`);
 	return e;
 };
 
@@ -238,11 +272,16 @@ export function createOAuth2AuthRouter(providerName: string): Router {
 		(req, res) => {
 			const provider = getAuthProvider(providerName) as OAuth2AuthDriver;
 			const codeVerifier = provider.generateCodeVerifier();
-			const prompt = !!req.query.prompt;
-			const token = jwt.sign({ verifier: codeVerifier, redirect: req.query.redirect, prompt }, env.SECRET as string, {
-				expiresIn: '5m',
-				issuer: 'directus',
-			});
+			const prompt = !!req.query['prompt'];
+
+			const token = jwt.sign(
+				{ verifier: codeVerifier, redirect: req.query['redirect'], prompt },
+				env['SECRET'] as string,
+				{
+					expiresIn: '5m',
+					issuer: 'directus',
+				}
+			);
 
 			res.cookie(`oauth2.${providerName}`, token, {
 				httpOnly: true,
@@ -262,31 +301,40 @@ export function createOAuth2AuthRouter(providerName: string): Router {
 		},
 		respond
 	);
+
 	router.get(
 		'/callback',
 		asyncHandler(async (req, res, next) => {
 			let tokenData;
 
 			try {
-				tokenData = jwt.verify(req.cookies[`oauth2.${providerName}`], env.SECRET as string, { issuer: 'directus' }) as {
+				tokenData = jwt.verify(req.cookies[`oauth2.${providerName}`], env['SECRET'] as string, {
+					issuer: 'directus',
+				}) as {
 					verifier: string;
 					redirect?: string;
 					prompt: boolean;
 				};
 			} catch (e: any) {
 				logger.warn(e, `[OAuth2] Couldn't verify OAuth2 cookie`);
-				throw new InvalidCredentialsException();
+				throw new InvalidCredentialsError();
 			}
 
 			const { verifier, redirect, prompt } = tokenData;
 
+			const accountability: Accountability = {
+				ip: getIPFromReq(req),
+				role: null,
+			};
+
+			const userAgent = req.get('user-agent');
+			if (userAgent) accountability.userAgent = userAgent;
+
+			const origin = req.get('origin');
+			if (origin) accountability.origin = origin;
+
 			const authenticationService = new AuthenticationService({
-				accountability: {
-					ip: getIPFromReq(req),
-					userAgent: req.get('user-agent'),
-					origin: req.get('origin'),
-					role: null,
-				},
+				accountability,
 				schema: req.schema,
 			});
 
@@ -294,21 +342,22 @@ export function createOAuth2AuthRouter(providerName: string): Router {
 
 			try {
 				res.clearCookie(`oauth2.${providerName}`);
+
 				authResponse = await authenticationService.login(providerName, {
-					code: req.query.code,
+					code: req.query['code'],
 					codeVerifier: verifier,
-					state: req.query.state,
+					state: req.query['state'],
 				});
 			} catch (error: any) {
 				// Prompt user for a new refresh_token if invalidated
-				if (error instanceof InvalidTokenException && !prompt) {
+				if (isDirectusError(error, ErrorCode.InvalidToken) && !prompt) {
 					return res.redirect(`./?${redirect ? `redirect=${redirect}&` : ''}prompt=true`);
 				}
 
 				if (redirect) {
 					let reason = 'UNKNOWN_EXCEPTION';
 
-					if (error instanceof BaseException) {
+					if (isDirectusError(error)) {
 						reason = error.code;
 					} else {
 						logger.warn(error, `[OAuth2] Unexpected error during OAuth2 login`);
@@ -324,18 +373,18 @@ export function createOAuth2AuthRouter(providerName: string): Router {
 			const { accessToken, refreshToken, expires } = authResponse;
 
 			if (redirect) {
-				res.cookie(env.REFRESH_TOKEN_COOKIE_NAME, refreshToken, {
+				res.cookie(env['REFRESH_TOKEN_COOKIE_NAME'], refreshToken, {
 					httpOnly: true,
-					domain: env.REFRESH_TOKEN_COOKIE_DOMAIN,
-					maxAge: ms(env.REFRESH_TOKEN_TTL as string),
-					secure: env.REFRESH_TOKEN_COOKIE_SECURE ?? false,
-					sameSite: (env.REFRESH_TOKEN_COOKIE_SAME_SITE as 'lax' | 'strict' | 'none') || 'strict',
+					domain: env['REFRESH_TOKEN_COOKIE_DOMAIN'],
+					maxAge: getMilliseconds(env['REFRESH_TOKEN_TTL']),
+					secure: env['REFRESH_TOKEN_COOKIE_SECURE'] ?? false,
+					sameSite: (env['REFRESH_TOKEN_COOKIE_SAME_SITE'] as 'lax' | 'strict' | 'none') || 'strict',
 				});
 
 				return res.redirect(redirect);
 			}
 
-			res.locals.payload = {
+			res.locals['payload'] = {
 				data: { access_token: accessToken, refresh_token: refreshToken, expires },
 			};
 

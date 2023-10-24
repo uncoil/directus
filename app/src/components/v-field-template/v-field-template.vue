@@ -1,40 +1,10 @@
-<template>
-	<v-menu v-model="menuActive" attached>
-		<template #activator="{ toggle }">
-			<v-input :disabled="disabled">
-				<template #input>
-					<span
-						ref="contentEl"
-						class="content"
-						:contenteditable="!disabled"
-						@keydown="onKeyDown"
-						@input="onInput"
-						@click="onClick"
-					>
-						<span class="text" />
-					</span>
-					<span v-if="placeholder && !modelValue" class="placeholder">{{ placeholder }}</span>
-				</template>
-
-				<template #append>
-					<v-icon name="add_box" outline clickable :disabled="disabled" @click="toggle" />
-				</template>
-			</v-input>
-		</template>
-
-		<v-list v-if="!disabled" :mandatory="false" @toggle="loadFieldRelations($event.value)">
-			<field-list-item v-for="field in treeList" :key="field.field" :field="field" :depth="depth" @add="addField" />
-		</v-list>
-	</v-menu>
-</template>
-
 <script setup lang="ts">
-import { toRefs, ref, watch, onMounted, onUnmounted, computed } from 'vue';
-import FieldListItem from './field-list-item.vue';
-import { FieldTree } from './types';
-import { Field, Relation } from '@directus/shared/types';
 import { useFieldTree } from '@/composables/use-field-tree';
 import { flattenFieldGroups } from '@/utils/flatten-field-groups';
+import { Field, Relation } from '@directus/types';
+import { computed, onMounted, onUnmounted, ref, toRefs, watch } from 'vue';
+import FieldListItem from './field-list-item.vue';
+import { FieldTree } from './types';
 
 interface Props {
 	disabled?: boolean;
@@ -114,6 +84,10 @@ function onClick(event: MouseEvent) {
 }
 
 function onKeyDown(event: KeyboardEvent) {
+	if (event.key === 'Enter') {
+		event.preventDefault();
+	}
+
 	if (event.key === '{' || event.key === '}') {
 		event.preventDefault();
 		menuActive.value = true;
@@ -142,6 +116,7 @@ function onSelect() {
 
 		for (let i = 0; i < contentEl.value.childNodes.length || !textSpan; i++) {
 			const child = contentEl.value.children[i];
+
 			if (child.classList.contains('text')) {
 				textSpan = child;
 			}
@@ -153,7 +128,7 @@ function onSelect() {
 			contentEl.value.appendChild(textSpan);
 		}
 
-		range.setStart(textSpan, 0);
+		range.setStart(textSpan as Node, 0);
 		selection.addRange(range);
 	}
 }
@@ -168,7 +143,7 @@ function addField(field: FieldTree) {
 
 	if (window.getSelection()?.rangeCount == 0) {
 		const range = document.createRange();
-		range.selectNodeContents(contentEl.value.children[0]);
+		range.selectNodeContents(contentEl.value.children[0] as Node);
 		window.getSelection()?.addRange(range);
 	}
 
@@ -266,6 +241,7 @@ function setContent() {
 				if (part.startsWith('{{') === false) {
 					return `<span class="text">${part}</span>`;
 				}
+
 				const fieldKey = part.replace(/({|})/g, '').trim();
 				const fieldPath = fieldKey.split('.');
 
@@ -282,12 +258,43 @@ function setContent() {
 				}</button>`;
 			})
 			.join('');
+
 		contentEl.value.innerHTML = newInnerHTML;
 	}
 }
 </script>
 
-<style scoped>
+<template>
+	<v-menu v-model="menuActive" attached>
+		<template #activator="{ toggle }">
+			<v-input :disabled="disabled">
+				<template #input>
+					<span
+						ref="contentEl"
+						class="content"
+						:contenteditable="!disabled"
+						@keydown="onKeyDown"
+						@input="onInput"
+						@click="onClick"
+					>
+						<span class="text" />
+					</span>
+					<span v-if="placeholder && !modelValue" class="placeholder">{{ placeholder }}</span>
+				</template>
+
+				<template #append>
+					<v-icon name="add_box" outline clickable :disabled="disabled" @click="toggle" />
+				</template>
+			</v-input>
+		</template>
+
+		<v-list v-if="!disabled" :mandatory="false" @toggle="loadFieldRelations($event.value)">
+			<field-list-item v-for="field in treeList" :key="field.field" :field="field" :depth="depth" @add="addField" />
+		</v-list>
+	</v-menu>
+</template>
+
+<style scoped lang="scss">
 .content {
 	display: block;
 	flex-grow: 1;
@@ -295,24 +302,25 @@ function setContent() {
 	padding: var(--input-padding) 0;
 	overflow: hidden;
 	font-size: 14px;
-	font-family: var(--family-monospace);
+	font-family: var(--theme--font-family-monospace);
 	white-space: nowrap;
+
+	:deep(span) {
+		min-width: 1px;
+		min-height: 1em;
+		white-space: pre;
+	}
 }
 
 :deep(br) {
 	display: none;
 }
 
-:deep(span) {
-	min-width: 1px;
-	min-height: 1em;
-}
-
 :deep(button) {
 	margin: -1px 4px 0;
 	padding: 2px 4px 0;
-	color: var(--primary);
-	background-color: var(--primary-alt);
+	color: var(--theme--primary);
+	background-color: var(--theme--primary-background);
 	border-radius: var(--border-radius);
 	transition: var(--fast) var(--transition);
 	transition-property: background-color, color;
@@ -321,14 +329,14 @@ function setContent() {
 
 :deep(button:not(:disabled):hover) {
 	color: var(--white);
-	background-color: var(--danger);
+	background-color: var(--theme--danger);
 }
 
 .placeholder {
 	position: absolute;
 	top: 50%;
 	left: 14px;
-	color: var(--foreground-subdued);
+	color: var(--theme--foreground-subdued);
 	transform: translateY(-50%);
 	user-select: none;
 	pointer-events: none;

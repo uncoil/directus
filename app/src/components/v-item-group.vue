@@ -1,12 +1,6 @@
-<template>
-	<div class="v-item-group">
-		<slot />
-	</div>
-</template>
-
 <script setup lang="ts">
 import { toRefs } from 'vue';
-import { useGroupableParent } from '@directus/shared/composables';
+import { useGroupableParent } from '@directus/composables';
 
 interface Props {
 	/** If enabled, at least one item has to be selected */
@@ -32,6 +26,7 @@ const props = withDefaults(defineProps<Props>(), {
 const emit = defineEmits(['update:modelValue']);
 
 const { modelValue: selection, multiple, max, mandatory } = toRefs(props);
+
 useGroupableParent(
 	{
 		selection: selection,
@@ -45,3 +40,9 @@ useGroupableParent(
 	props.scope
 );
 </script>
+
+<template>
+	<div class="v-item-group">
+		<slot />
+	</div>
+</template>

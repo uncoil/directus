@@ -1,5 +1,6 @@
-import { Filter } from '@directus/shared/types';
-import { defineOperationApi, validatePayload } from '@directus/shared/utils';
+import type { Filter } from '@directus/types';
+import { validatePayload } from '@directus/utils';
+import { defineOperationApi } from '@directus/extensions';
 
 type Options = {
 	filter: Filter;

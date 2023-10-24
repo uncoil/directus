@@ -1,4 +1,4 @@
-import { Type } from '@directus/shared/types';
+import { Type } from '@directus/types';
 
 export const VALIDATION_TYPES = ['FAILED_VALIDATION', 'RECORD_NOT_UNIQUE'];
 
@@ -30,6 +30,7 @@ export const DIRECTUS_LOGO = `
 export const COLLECTIONS_DENY_LIST = [
 	'directus_activity',
 	'directus_collections',
+	'directus_extensions',
 	'directus_fields',
 	'directus_migrations',
 	'directus_relations',
@@ -60,9 +61,12 @@ export const MODULE_BAR_DEFAULT = [
 		enabled: true,
 	},
 	{
-		type: 'module',
+		type: 'link',
 		id: 'docs',
 		enabled: true,
+		name: '$t:documentation',
+		icon: 'help',
+		url: 'https://docs.directus.io',
 	},
 	{
 		type: 'module',

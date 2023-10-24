@@ -1,19 +1,5 @@
-<template>
-	<div class="variable" :class="{ 'show-header': showHeader }">
-		<component
-			:is="`interface-${inter}`"
-			v-bind="options"
-			:value="value"
-			:width="fieldWidth"
-			:type="type"
-			:field="field"
-			@input="value = $event"
-		/>
-	</div>
-</template>
-
-<script lang="ts" setup>
-import { Type } from '@directus/shared/types';
+<script setup lang="ts">
+import { Type } from '@directus/types';
 import { computed } from 'vue';
 import { useInsightsStore } from '@/stores/insights';
 
@@ -42,6 +28,20 @@ const value = computed({
 	},
 });
 </script>
+
+<template>
+	<div class="variable" :class="{ 'show-header': showHeader }">
+		<component
+			:is="`interface-${inter}`"
+			v-bind="options"
+			:value="value"
+			:width="fieldWidth"
+			:type="type"
+			:field="field"
+			@input="value = $event"
+		/>
+	</div>
+</template>
 
 <style lang="scss" scope>
 .variable {

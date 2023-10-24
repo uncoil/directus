@@ -1,4 +1,4 @@
-import { defineOperationApp } from '@directus/shared/utils';
+import { defineOperationApp } from '@directus/extensions';
 
 export default defineOperationApp({
 	id: 'notification',
@@ -27,6 +27,7 @@ export default defineOperationApp({
 					iconRight: 'people_alt',
 					placeholder: '$t:operations.notification.recipient_placeholder',
 				},
+				note: '$t:operations.notification.recipient_note',
 			},
 		},
 		{
@@ -60,7 +61,7 @@ export default defineOperationApp({
 		},
 		{
 			field: 'subject',
-			name: '$t:title',
+			name: '$t:operations.notification.subject',
 			type: 'string',
 			meta: {
 				width: 'full',
@@ -77,6 +78,28 @@ export default defineOperationApp({
 			meta: {
 				width: 'full',
 				interface: 'input-rich-text-md',
+			},
+		},
+		{
+			field: 'collection',
+			name: '$t:collection',
+			type: 'string',
+			meta: {
+				width: 'half',
+				interface: 'system-collection',
+			},
+		},
+		{
+			field: 'item',
+			name: '$t:item',
+			type: 'string',
+			meta: {
+				width: 'half',
+				interface: 'input',
+				options: {
+					iconRight: 'vpn_key',
+				},
+				note: '$t:operations.notification.item_note',
 			},
 		},
 	],

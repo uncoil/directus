@@ -1,10 +1,14 @@
+import type { Field, Type } from '@directus/types';
 import fse from 'fs-extra';
 import yaml from 'js-yaml';
-import { Knex } from 'knex';
-import { isObject } from 'lodash';
+import type { Knex } from 'knex';
+import { isObject } from 'lodash-es';
+import { dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import path from 'path';
-import { Type, Field } from '@directus/shared/types';
-import { getHelpers } from '../helpers';
+import { getHelpers } from '../helpers/index.js';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 type TableSeed = {
 	table: string;
@@ -54,7 +58,7 @@ export default async function runSeed(database: Knex): Promise<void> {
 				} else if (columnInfo.increments) {
 					column = tableBuilder.increments();
 				} else if (columnInfo.type === 'csv') {
-					column = tableBuilder.string(columnName);
+					column = tableBuilder.text(columnName);
 				} else if (columnInfo.type === 'hash') {
 					column = tableBuilder.string(columnName, 255);
 				} else if (columnInfo.type?.startsWith('geometry')) {

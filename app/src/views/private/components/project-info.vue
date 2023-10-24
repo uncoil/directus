@@ -1,3 +1,14 @@
+<script setup lang="ts">
+import { computed } from 'vue';
+import LatencyIndicator from './latency-indicator.vue';
+import { useServerStore } from '@/stores/server';
+
+const serverStore = useServerStore();
+
+const name = computed(() => serverStore.info?.project?.project_name);
+const descriptor = computed(() => serverStore.info?.project?.project_descriptor);
+</script>
+
 <template>
 	<div class="project-info">
 		<latency-indicator />
@@ -8,24 +19,6 @@
 	</div>
 </template>
 
-<script lang="ts">
-import { defineComponent, computed } from 'vue';
-import LatencyIndicator from './latency-indicator.vue';
-import { useServerStore } from '@/stores/server';
-
-export default defineComponent({
-	components: { LatencyIndicator },
-	setup() {
-		const serverStore = useServerStore();
-
-		const name = computed(() => serverStore.info?.project?.project_name);
-		const descriptor = computed(() => serverStore.info?.project?.project_descriptor);
-
-		return { name, descriptor };
-	},
-});
-</script>
-
 <style lang="scss" scoped>
 .project-info {
 	position: relative;
@@ -34,9 +27,9 @@ export default defineComponent({
 	width: 100%;
 	height: 60px;
 	padding-left: 20px;
-	color: var(--foreground-normal-alt);
+	color: var(--theme--navigation--project--foreground);
 	text-align: left;
-	background-color: var(--background-normal-alt);
+	background: var(--theme--navigation--project--background);
 
 	.name-container {
 		flex-grow: 1;
@@ -51,7 +44,7 @@ export default defineComponent({
 
 	.descriptor {
 		display: block;
-		color: var(--foreground-subdued);
+		color: var(--theme--foreground-subdued);
 	}
 }
 </style>

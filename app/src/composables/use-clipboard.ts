@@ -20,18 +20,22 @@ export function useClipboard() {
 
 	return { isCopySupported, isPasteSupported, copyToClipboard, pasteFromClipboard };
 
-	async function copyToClipboard(value: string, message?: Message): Promise<boolean> {
+	async function copyToClipboard(value: any, message?: Message): Promise<boolean> {
 		try {
-			await navigator?.clipboard?.writeText(value);
+			const valueString = typeof value === 'string' ? value : JSON.stringify(value);
+			await navigator?.clipboard?.writeText(valueString);
+
 			notify({
 				title: message?.success ?? t('copy_raw_value_success'),
 			});
+
 			return true;
 		} catch (err: any) {
 			notify({
 				type: 'error',
 				title: message?.fail ?? t('copy_raw_value_fail'),
 			});
+
 			return false;
 		}
 	}
@@ -39,15 +43,18 @@ export function useClipboard() {
 	async function pasteFromClipboard(message?: Message): Promise<string | null> {
 		try {
 			const pasteValue = await navigator?.clipboard?.readText();
+
 			notify({
 				title: message?.success ?? t('paste_raw_value_success'),
 			});
+
 			return pasteValue;
 		} catch (err: any) {
 			notify({
 				type: 'error',
 				title: message?.fail ?? t('paste_raw_value_fail'),
 			});
+
 			return null;
 		}
 	}

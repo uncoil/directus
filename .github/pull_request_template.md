@@ -1,31 +1,33 @@
-## Description
-
 <!--
 
-A summary of the changes and a reference to the Issue that was fixed / implemented.
+Heya! Thanks for opening a Pull Request! If your PR is implementing a new feature or fix for Directus, please make sure your PR adheres to the following requirements:
 
-NOTE: All Pull Requests require a corresponding open Issue.
+- The PR closes an Issue (not Discussion)
+- Tests are added/updated and are passing locally if applicable
+- Documentation was added/updated if applicable
 
-Please reference the Issue number below:
+Please make sure to "Link" the issue you're closing. Without a Linked issue, this PR won't be accepted. See https://docs.github.com/en/issues/tracking-your-work-with-issues/linking-a-pull-request-to-an-issue for more information.
 
 -->
 
-Fixes #
+## Scope
 
-## Type of Change
+What's changed:
 
-- [ ] Bugfix
-- [ ] Improvement
-- [ ] New Feature
-- [ ] Refactor / codestyle updates
-- [ ] Other, please describe:
+- Lorem ipsum dolor sit amet
+- Consectetur adipiscing elit
+- Sed do eiusmod tempor incididunt
 
-## Requirements Checklist
+## Potential Risks / Drawbacks
 
-- [ ] New / updated tests are included
-- [ ] All tests are passing locally
-- [ ] Performed a self-review of the submitted code
+- Lorem ipsum dolor sit amet
+- Consectetur adipiscing elit
 
-If adding a new feature:
+## Review Notes / Questions
 
-- [ ] Documentation was added/updated. PR:
+- I would like to lorem ipsum
+- Special attention should be paid to dolor sit amet
+
+---
+
+Fixes #\<num\>

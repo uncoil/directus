@@ -1,3 +1,66 @@
+<script setup lang="ts">
+import { useSync } from '@directus/composables';
+import { Field, ShowSelect } from '@directus/types';
+import { computed } from 'vue';
+import { useI18n } from 'vue-i18n';
+
+const props = withDefaults(
+	defineProps<{
+		fields: Field[];
+		size: number;
+		sort: string[];
+		showSelect?: ShowSelect;
+		selection?: (number | string)[];
+	}>(),
+	{
+		showSelect: 'multiple',
+		selection: () => [],
+	}
+);
+
+const emit = defineEmits(['select-all', 'update:size', 'update:sort', 'update:selection']);
+
+const { t } = useI18n();
+
+const sizeSync = useSync(props, 'size', emit);
+const sortSync = useSync(props, 'sort', emit);
+const selectionSync = useSync(props, 'selection', emit);
+
+const descending = computed(() => props.sort[0].startsWith('-'));
+
+const sortKey = computed(() => (props.sort[0].startsWith('-') ? props.sort[0].substring(1) : props.sort[0]));
+
+const sortField = computed(() => {
+	return props.fields.find((field) => field.field === sortKey.value);
+});
+
+const fieldsWithoutFake = computed(() => {
+	return props.fields
+		.filter((field) => field.field.startsWith('$') === false)
+		.map((field) => ({
+			field: field.field,
+			name: field.name,
+			disabled: ['json', 'o2m', 'm2o', 'm2a', 'file', 'files', 'alias', 'presentation'].includes(field.type),
+		}));
+});
+
+function toggleSize() {
+	if (props.size >= 2 && props.size < 5) {
+		sizeSync.value++;
+	} else {
+		sizeSync.value = 2;
+	}
+}
+
+function toggleDescending() {
+	if (descending.value === true) {
+		sortSync.value = [sortSync.value[0].substring(1)];
+	} else {
+		sortSync.value = ['-' + sortSync.value];
+	}
+}
+</script>
+
 <template>
 	<div class="cards-header">
 		<div class="start">
@@ -51,93 +114,6 @@
 	</div>
 </template>
 
-<script lang="ts">
-import { useI18n } from 'vue-i18n';
-import { defineComponent, PropType, computed } from 'vue';
-import { Field, ShowSelect } from '@directus/shared/types';
-import { useSync } from '@directus/shared/composables';
-
-export default defineComponent({
-	props: {
-		fields: {
-			type: Array as PropType<Field[]>,
-			required: true,
-		},
-		size: {
-			type: Number,
-			required: true,
-		},
-		sort: {
-			type: Array as PropType<string[]>,
-			required: true,
-		},
-		showSelect: {
-			type: String as PropType<ShowSelect>,
-			default: 'multiple',
-		},
-		selection: {
-			type: Array as PropType<Record<string, any>>,
-			default: () => [],
-		},
-	},
-	emits: ['select-all', 'update:size', 'update:sort', 'update:selection'],
-	setup(props, { emit }) {
-		const { t } = useI18n();
-
-		const sizeSync = useSync(props, 'size', emit);
-		const sortSync = useSync(props, 'sort', emit);
-		const selectionSync = useSync(props, 'selection', emit);
-
-		const descending = computed(() => props.sort[0].startsWith('-'));
-
-		const sortKey = computed(() => (props.sort[0].startsWith('-') ? props.sort[0].substring(1) : props.sort[0]));
-
-		const sortField = computed(() => {
-			return props.fields.find((field) => field.field === sortKey.value);
-		});
-
-		const fieldsWithoutFake = computed(() => {
-			return props.fields
-				.filter((field) => field.field.startsWith('$') === false)
-				.map((field) => ({
-					field: field.field,
-					name: field.name,
-					disabled: ['json', 'o2m', 'm2o', 'm2a', 'file', 'files', 'alias', 'presentation'].includes(field.type),
-				}));
-		});
-
-		return {
-			t,
-			toggleSize,
-			descending,
-			toggleDescending,
-			sortField,
-			sizeSync,
-			sortSync,
-			selectionSync,
-			sortKey,
-			fieldsWithoutFake,
-		};
-
-		function toggleSize() {
-			if (props.size >= 2 && props.size < 5) {
-				sizeSync.value++;
-			} else {
-				sizeSync.value = 2;
-			}
-		}
-
-		function toggleDescending() {
-			if (descending.value === true) {
-				sortSync.value = [sortSync.value[0].substring(1)];
-			} else {
-				sortSync.value = ['-' + sortSync.value];
-			}
-		}
-	},
-});
-</script>
-
 <style lang="scss" scoped>
 .cards-header {
 	position: sticky;
@@ -150,10 +126,10 @@ export default defineComponent({
 	height: 52px;
 	margin-bottom: 36px;
 	padding: 0 8px;
-	background-color: var(--background-page);
+	background-color: var(--theme--background);
 	border-top: var(--border-width) solid var(--border-subdued);
 	border-bottom: var(--border-width) solid var(--border-subdued);
-	box-shadow: 0 0 0 2px var(--background-page);
+	box-shadow: 0 0 0 2px var(--theme--background);
 }
 
 .start {
@@ -164,11 +140,11 @@ export default defineComponent({
 	}
 
 	.select-all {
-		color: var(--foreground-subdued);
+		color: var(--theme--foreground-subdued);
 		transition: color var(--fast) var(--transition);
 
 		&:hover {
-			color: var(--foreground-normal);
+			color: var(--theme--foreground);
 		}
 	}
 
@@ -180,14 +156,14 @@ export default defineComponent({
 .end {
 	display: flex;
 	align-items: center;
-	color: var(--foreground-subdued);
+	color: var(--theme--foreground-subdued);
 
 	.size-selector {
 		margin-right: 16px;
 		transition: color var(--fast) var(--transition);
 
 		&:hover {
-			color: var(--foreground-normal);
+			color: var(--theme--foreground);
 		}
 	}
 
@@ -196,7 +172,7 @@ export default defineComponent({
 		transition: color var(--fast) var(--transition);
 
 		&:hover {
-			color: var(--foreground-normal);
+			color: var(--theme--foreground);
 			cursor: pointer;
 		}
 	}
@@ -209,7 +185,7 @@ export default defineComponent({
 		}
 
 		&:hover {
-			color: var(--foreground-normal);
+			color: var(--theme--foreground);
 			cursor: pointer;
 		}
 	}

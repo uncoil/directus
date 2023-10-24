@@ -2,25 +2,34 @@ import { ComponentPublicInstance, onMounted, onUnmounted, Ref, ref } from 'vue';
 
 type ShortcutHandler = (event: KeyboardEvent, cancelNext: () => void) => void | any | boolean;
 
-const keysdown: Set<string> = new Set([]);
+export const keyMap: Record<string, string> = {
+	Control: 'meta',
+	Command: 'meta',
+};
+
+export const systemKeys = ['meta', 'shift', 'alt', 'backspace', 'delete', 'tab', 'capslock', 'enter', 'home', 'end'];
+
+const keysDown: Set<string> = new Set([]);
 const handlers: Record<string, ShortcutHandler[]> = {};
 
 document.body.addEventListener('keydown', (event: KeyboardEvent) => {
 	if (event.repeat || !event.key) return;
 
-	keysdown.add(mapKeys(event));
+	keysDown.add(mapKeys(event));
 	callHandlers(event);
 });
 
 document.body.addEventListener('keyup', (event: KeyboardEvent) => {
 	if (event.repeat || !event.key) return;
-	keysdown.clear();
+	keysDown.clear();
 });
 
 export function useShortcut(
 	shortcuts: string | string[],
 	handler: ShortcutHandler,
-	reference: Ref<HTMLElement | undefined> | Ref<ComponentPublicInstance | undefined> = ref(document.body)
+	reference: Ref<HTMLElement | undefined> | Ref<ComponentPublicInstance | undefined> = ref(
+		document.body
+	) as Ref<HTMLElement>
 ): void {
 	const callback: ShortcutHandler = (event, cancelNext) => {
 		if (!reference.value) return;
@@ -62,15 +71,11 @@ export function useShortcut(
 }
 
 function mapKeys(key: KeyboardEvent) {
-	const map: Record<string, string> = {
-		Control: 'meta',
-		Command: 'meta',
-	};
 	const isLatinAlphabet = /^[a-zA-Z0-9]*?$/g;
 
 	let keyString = key.key.match(isLatinAlphabet) === null ? key.code.replace(/(Key|Digit)/g, '') : key.key;
 
-	keyString = keyString in map ? map[keyString] : keyString;
+	keyString = keyString in keyMap ? keyMap[keyString] : keyString;
 	keyString = keyString.toLowerCase();
 
 	return keyString;
@@ -80,12 +85,12 @@ function callHandlers(event: KeyboardEvent) {
 	Object.entries(handlers).forEach(([key, value]) => {
 		const keys = key.split('+');
 
-		for (key of keysdown) {
+		for (key of keysDown) {
 			if (keys.includes(key) === false) return;
 		}
 
 		for (key of keys) {
-			if (keysdown.has(key) === false) return;
+			if (keysDown.has(key) === false) return;
 		}
 
 		for (let i = 0; i < value.length; i++) {

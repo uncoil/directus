@@ -1,3 +1,27 @@
+<script setup lang="ts">
+import { useServerStore } from '@/stores/server';
+import { getRootPath } from '@/utils/get-root-path';
+import { storeToRefs } from 'pinia';
+import { computed } from 'vue';
+import { useI18n } from 'vue-i18n';
+
+defineProps<{
+	title?: string;
+	inline?: boolean;
+}>();
+
+const serverStore = useServerStore();
+
+const { info: serverInfo } = storeToRefs(serverStore);
+
+const { t } = useI18n();
+
+const logoURL = computed<string | null>(() => {
+	if (!serverStore.info?.project?.project_logo) return null;
+	return getRootPath() + `assets/${serverStore.info.project?.project_logo}`;
+});
+</script>
+
 <template>
 	<div class="shared" :class="{ inline }">
 		<div class="inline-container">
@@ -5,17 +29,21 @@
 				<div class="container">
 					<div class="title-box">
 						<div
-							v-if="serverInfo?.project.project_logo"
+							v-if="serverInfo?.project?.project_logo"
 							class="logo"
-							:style="{ backgroundColor: serverInfo?.project.project_color }"
+							:style="serverInfo?.project?.project_color ? { backgroundColor: serverInfo.project.project_color } : {}"
 						>
-							<img :src="logoURL" :alt="serverInfo?.project.project_name || 'Logo'" />
+							<img :src="logoURL!" :alt="serverInfo?.project.project_name || 'Logo'" />
 						</div>
-						<div v-else class="logo" :style="{ backgroundColor: serverInfo?.project.project_color }">
+						<div
+							v-else
+							class="logo"
+							:style="serverInfo?.project?.project_color ? { backgroundColor: serverInfo.project.project_color } : {}"
+						>
 							<img src="../../assets/logo.svg" alt="Directus" class="directus-logo" />
 						</div>
 						<div class="title">
-							<p class="subtitle">{{ serverInfo?.project.project_name }}</p>
+							<p class="subtitle">{{ serverInfo?.project?.project_name }}</p>
 							<slot name="title">
 								<h1 class="type-title">{{ title ?? t('share_access_page') }}</h1>
 							</slot>
@@ -32,46 +60,6 @@
 		</div>
 	</div>
 </template>
-
-<script lang="ts">
-import { defineComponent, computed } from 'vue';
-import { useServerStore } from '@/stores/server';
-import { storeToRefs } from 'pinia';
-import { useI18n } from 'vue-i18n';
-import { getRootPath } from '@/utils/get-root-path';
-
-export default defineComponent({
-	name: 'SharedView',
-	props: {
-		title: {
-			type: String,
-			default: null,
-		},
-		inline: {
-			type: Boolean,
-			default: false,
-		},
-	},
-	setup() {
-		const serverStore = useServerStore();
-
-		const { info } = storeToRefs(serverStore);
-
-		const { t } = useI18n();
-
-		const logoURL = computed<string | null>(() => {
-			if (!serverStore.info?.project?.project_logo) return null;
-			return getRootPath() + `assets/${serverStore.info.project?.project_logo}`;
-		});
-
-		return {
-			serverInfo: info,
-			t,
-			logoURL,
-		};
-	},
-});
-</script>
 
 <style scoped lang="scss">
 .shared {
@@ -93,7 +81,7 @@ export default defineComponent({
 header {
 	margin-bottom: 32px;
 	padding: 10px;
-	background-color: var(--background-page);
+	background-color: var(--theme--background);
 	border-bottom: var(--border-width) solid var(--border-subdued);
 }
 
@@ -114,7 +102,7 @@ header {
 		margin-left: 16px;
 
 		h1 {
-			color: var(--foreground-normal);
+			color: var(--theme--foreground);
 			font-weight: 700;
 			font-size: 24px;
 			line-height: 24px;
@@ -122,7 +110,7 @@ header {
 
 		.subtitle {
 			width: 100%;
-			color: var(--foreground-subdued);
+			color: var(--theme--foreground-subdued);
 		}
 	}
 }
@@ -133,7 +121,7 @@ header {
 	justify-content: center;
 	width: 60px;
 	height: 60px;
-	background-color: var(--brand);
+	background-color: var(--project-color);
 	border-radius: var(--border-radius);
 
 	img {
@@ -146,7 +134,7 @@ header {
 
 .content {
 	padding: 32px;
-	background-color: var(--background-page);
+	background-color: var(--theme--background);
 	border-radius: var(--border-radius);
 	box-shadow: 0px 4px 12px rgba(38, 50, 56, 0.1);
 }
@@ -161,7 +149,7 @@ header {
 		width: 100%;
 		max-width: 856px;
 		padding: 32px;
-		background-color: var(--background-page);
+		background-color: var(--theme--background);
 		border-radius: var(--border-radius);
 		box-shadow: 0px 4px 12px rgba(38, 50, 56, 0.1);
 

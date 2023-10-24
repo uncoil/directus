@@ -1,7 +1,140 @@
+<script lang="ts">
+export default {
+	inheritAttrs: false,
+};
+</script>
+
+<script setup lang="ts">
+import { HeaderRaw } from '@/components/v-table/types';
+import { AliasFields, useAliasFields } from '@/composables/use-alias-fields';
+import { usePageSize } from '@/composables/use-page-size';
+import { useShortcut } from '@/composables/use-shortcut';
+import { usePermissionsStore } from '@/stores/permissions';
+import { useUserStore } from '@/stores/user';
+import { Collection } from '@/types/collections';
+import { useSync } from '@directus/composables';
+import { Field, Filter, Item, ShowSelect } from '@directus/types';
+import { ComponentPublicInstance, Ref, computed, inject, ref, toRefs, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
+
+interface Props {
+	collection: string;
+	selection?: Item[];
+	readonly: boolean;
+	tableHeaders: HeaderRaw[];
+	showSelect?: ShowSelect;
+	items: Item[];
+	loading: boolean;
+	error?: any;
+	totalPages: number;
+	tableSort?: { by: string; desc: boolean } | null;
+	onRowClick: (item: Item) => void;
+	tableRowHeight: number;
+	page: number;
+	toPage: (newPage: number) => void;
+	itemCount?: number;
+	fields: string[];
+	limit: number;
+	primaryKeyField?: Field;
+	info?: Collection;
+	sortField?: string;
+	changeManualSort: (data: any) => Promise<void>;
+	resetPresetAndRefresh: () => Promise<void>;
+	selectAll: () => void;
+	filterUser?: Filter;
+	search?: string;
+	aliasedFields: Record<string, AliasFields>;
+	aliasedKeys: string[];
+	onSortChange: (newSort: { by: string; desc: boolean }) => void;
+	onAlignChange?: (field: 'string', align: 'left' | 'center' | 'right') => void;
+}
+
+const props = withDefaults(defineProps<Props>(), {
+	selection: () => [],
+	showSelect: 'none',
+	error: null,
+	itemCount: undefined,
+	tableSort: undefined,
+	primaryKeyField: undefined,
+	info: undefined,
+	sortField: undefined,
+	filterUser: undefined,
+	search: undefined,
+	onAlignChange: () => undefined,
+});
+
+const emit = defineEmits(['update:selection', 'update:tableHeaders', 'update:limit', 'update:fields']);
+
+const { t } = useI18n();
+const { collection } = toRefs(props);
+
+const selectionWritable = useSync(props, 'selection', emit);
+const tableHeadersWritable = useSync(props, 'tableHeaders', emit);
+const limitWritable = useSync(props, 'limit', emit);
+
+const mainElement = inject<Ref<Element | undefined>>('main-element');
+
+const table = ref<ComponentPublicInstance>();
+
+watch(
+	() => props.page,
+	() => mainElement?.value?.scrollTo({ top: 0, behavior: 'smooth' })
+);
+
+useShortcut(
+	'meta+a',
+	() => {
+		props.selectAll();
+	},
+	table
+);
+
+const permissionsStore = usePermissionsStore();
+const userStore = useUserStore();
+
+const { sizes: pageSizes, selected: selectedSize } = usePageSize<string>(
+	[25, 50, 100, 250, 500, 1000],
+	(value) => String(value),
+	props.limit
+);
+
+limitWritable.value = selectedSize;
+
+const showManualSort = computed(() => {
+	if (!props.sortField) return false;
+
+	const isAdmin = userStore.currentUser?.role?.admin_access;
+
+	if (isAdmin) return true;
+
+	const permission = permissionsStore.getPermissionsForUser(props.collection, 'update');
+
+	if (!permission) return false;
+
+	if (Array.isArray(permission.fields) && permission.fields.length > 0) {
+		return permission.fields.includes(props.sortField) || permission.fields.includes('*');
+	}
+
+	return true;
+});
+
+const fieldsWritable = useSync(props, 'fields', emit);
+
+const { getFromAliasedItem } = useAliasFields(fieldsWritable, collection);
+
+function addField(fieldKey: string) {
+	fieldsWritable.value = [...fieldsWritable.value, fieldKey];
+}
+
+function removeField(fieldKey: string) {
+	fieldsWritable.value = fieldsWritable.value.filter((field) => field !== fieldKey);
+}
+</script>
+
 <template>
 	<div class="layout-tabular">
 		<v-table
-			v-if="loading || (itemCount && itemCount > 0)"
+			v-if="loading || (itemCount && itemCount > 0 && !error)"
 			ref="table"
 			v-model="selectionWritable"
 			v-model:headers="tableHeadersWritable"
@@ -14,9 +147,8 @@
 			:items="items"
 			:loading="loading"
 			:row-height="tableRowHeight"
-			server-sort
 			:item-key="primaryKeyField?.field"
-			:show-manual-sort="sortField !== null"
+			:show-manual-sort="showManualSort"
 			:manual-sort-key="sortField"
 			allow-header-reorder
 			selection-use-keys
@@ -26,18 +158,14 @@
 		>
 			<template v-for="header in tableHeaders" :key="header.value" #[`item.${header.value}`]="{ item }">
 				<render-display
-					:value="
-						!aliasFields || item[header.value] !== undefined
-							? get(item, header.value)
-							: getAliasedValue(item, header.value)
-					"
+					:value="getFromAliasedItem(item, header.value)"
 					:display="header.field.display"
 					:options="header.field.displayOptions"
 					:interface="header.field.interface"
 					:interface-options="header.field.interfaceOptions"
 					:type="header.field.type"
 					:collection="header.field.collection"
-					:field="header.value"
+					:field="header.field.field"
 				/>
 			</template>
 
@@ -47,7 +175,7 @@
 						:disabled="!header.sortable"
 						:active="tableSort?.by === header.value && tableSort?.desc === false"
 						clickable
-						@click="onSortChange?.({ by: header.value, desc: false })"
+						@click="onSortChange({ by: header.value, desc: false })"
 					>
 						<v-list-item-icon>
 							<v-icon name="sort" class="flip" />
@@ -61,7 +189,7 @@
 						:active="tableSort?.by === header.value && tableSort?.desc === true"
 						:disabled="!header.sortable"
 						clickable
-						@click="onSortChange?.({ by: header.value, desc: true })"
+						@click="onSortChange({ by: header.value, desc: true })"
 					>
 						<v-list-item-icon>
 							<v-icon name="sort" />
@@ -124,7 +252,12 @@
 						/>
 					</template>
 
-					<v-field-list :collection="collection" :disabled-fields="fields" @select-field="addField" />
+					<v-field-list
+						:collection="collection"
+						:disabled-fields="fields"
+						:allow-select-all="false"
+						@add="addField($event[0])"
+					/>
 				</v-menu>
 			</template>
 
@@ -141,11 +274,11 @@
 						/>
 					</div>
 
-					<div v-if="loading === false && items.length >= 25" class="per-page">
+					<div v-if="loading === false && (items.length >= 25 || limit < 25)" class="per-page">
 						<span>{{ t('per_page') }}</span>
 						<v-select
 							:model-value="`${limit}`"
-							:items="['25', '50', '100', '250', '500', ' 1000']"
+							:items="pageSizes"
 							inline
 							@update:model-value="limitWritable = +$event"
 						/>
@@ -170,132 +303,6 @@
 		<slot v-else-if="itemCount === 0" name="no-items" />
 	</div>
 </template>
-
-<script lang="ts">
-export default {
-	inheritAttrs: false,
-};
-</script>
-
-<script lang="ts" setup>
-import { HeaderRaw } from '@/components/v-table/types';
-import { useShortcut } from '@/composables/use-shortcut';
-import { Collection } from '@/types/collections';
-import { useSync } from '@directus/shared/composables';
-import { Field, Filter, Item, ShowSelect } from '@directus/shared/types';
-import { ComponentPublicInstance, inject, ref, Ref, watch, computed } from 'vue';
-import { useI18n } from 'vue-i18n';
-import { get } from '@directus/shared/utils';
-import { useAliasFields, AliasField } from '@/composables/use-alias-fields';
-import { adjustFieldsForDisplays } from '@/utils/adjust-fields-for-displays';
-import { isEmpty, merge } from 'lodash';
-
-interface Props {
-	collection: string;
-	selection?: Item[];
-	readonly: boolean;
-	tableHeaders: HeaderRaw[];
-	showSelect?: ShowSelect;
-	items: Item[];
-	loading: boolean;
-	error?: any;
-	totalPages: number;
-	tableSort?: { by: string; desc: boolean } | null;
-	onRowClick: (item: Item) => void;
-	tableRowHeight: number;
-	page: number;
-	toPage: (newPage: number) => void;
-	itemCount?: number;
-	fields: string[];
-	limit: number;
-	primaryKeyField?: Field;
-	info?: Collection;
-	sortField?: string;
-	changeManualSort: (data: any) => Promise<void>;
-	resetPresetAndRefresh: () => Promise<void>;
-	selectAll: () => void;
-	filterUser?: Filter;
-	search?: string;
-	onSortChange?: (newSort: { by: string; desc: boolean }) => void;
-	onAlignChange?: (field: 'string', align: 'left' | 'center' | 'right') => void;
-}
-
-const props = withDefaults(defineProps<Props>(), {
-	selection: () => [],
-	showSelect: 'none',
-	error: null,
-	itemCount: undefined,
-	tableSort: undefined,
-	primaryKeyField: undefined,
-	info: undefined,
-	sortField: undefined,
-	filterUser: undefined,
-	search: undefined,
-	onSortChange: () => undefined,
-	onAlignChange: () => undefined,
-});
-
-const emit = defineEmits(['update:selection', 'update:tableHeaders', 'update:limit', 'update:fields']);
-
-const { t } = useI18n();
-
-const selectionWritable = useSync(props, 'selection', emit);
-const tableHeadersWritable = useSync(props, 'tableHeaders', emit);
-const limitWritable = useSync(props, 'limit', emit);
-
-const mainElement = inject<Ref<Element | undefined>>('main-element');
-
-const table = ref<ComponentPublicInstance>();
-
-watch(
-	() => props.page,
-	() => mainElement?.value?.scrollTo({ top: 0, behavior: 'smooth' })
-);
-
-useShortcut(
-	'meta+a',
-	() => {
-		props.selectAll();
-	},
-	table
-);
-
-const fieldsWritable = useSync(props, 'fields', emit);
-
-const fieldsWithRelational = computed(() => adjustFieldsForDisplays(fieldsWritable.value, props.collection));
-
-const { aliasFields } = useAliasFields(fieldsWithRelational);
-
-function getAliasedValue(item: Record<string, any>, field: string) {
-	if (aliasFields.value![field]) return get(item, aliasFields.value![field].fullAlias);
-
-	const matchingAliasFields = Object.values(aliasFields.value!).filter(
-		(aliasField: AliasField) => aliasField.fieldName === field
-	);
-	const matchingValues = matchingAliasFields.map(({ fieldAlias }) => item[fieldAlias]);
-	// if we have multiple results for each field pivot the data into a list of records
-	if (matchingValues.every((val) => Array.isArray(val))) {
-		return matchingValues.reduce((result, data) => {
-			for (let i = 0; i < data.length; i++) {
-				result[i] = merge(result[i], data[i]);
-			}
-			return result;
-		}, []);
-	}
-
-	// merge into a single record
-	const result = matchingValues.reduce((result, data) => merge(result, data), {});
-	return !isEmpty(result) ? result : null;
-}
-
-function addField(fieldKey: string) {
-	fieldsWritable.value = [...fieldsWritable.value, fieldKey];
-}
-
-function removeField(fieldKey: string) {
-	fieldsWritable.value = fieldsWritable.value.filter((field) => field !== fieldKey);
-}
-</script>
 
 <style lang="scss" scoped>
 .layout-tabular {
@@ -337,7 +344,7 @@ function removeField(fieldKey: string) {
 		align-items: center;
 		justify-content: flex-end;
 		width: 240px;
-		color: var(--foreground-subdued);
+		color: var(--theme--foreground-subdued);
 
 		span {
 			width: auto;
@@ -345,7 +352,7 @@ function removeField(fieldKey: string) {
 		}
 
 		.v-select {
-			color: var(--foreground-normal);
+			color: var(--theme--foreground);
 		}
 	}
 }
@@ -355,10 +362,10 @@ function removeField(fieldKey: string) {
 }
 
 .add-field {
-	--v-icon-color-hover: var(--foreground-normal);
+	--v-icon-color-hover: var(--theme--foreground);
 
 	&.active {
-		--v-icon-color: var(--foreground-normal);
+		--v-icon-color: var(--theme--foreground);
 	}
 }
 

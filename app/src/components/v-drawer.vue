@@ -1,3 +1,59 @@
+<script setup lang="ts">
+import { i18n } from '@/lang';
+import HeaderBar from '@/views/private/components/header-bar.vue';
+import { computed, provide, ref } from 'vue';
+import { useI18n } from 'vue-i18n';
+import VResizeable from './v-resizeable.vue';
+
+export interface Props {
+	title: string;
+	subtitle?: string | null;
+	modelValue?: boolean;
+	persistent?: boolean;
+	icon?: string;
+	sidebarResizeable?: boolean;
+	sidebarLabel?: string;
+	cancelable?: boolean;
+	headerShadow?: boolean;
+	smallHeader?: boolean;
+}
+
+const props = withDefaults(defineProps<Props>(), {
+	subtitle: null,
+	modelValue: undefined,
+	persistent: false,
+	icon: 'box',
+	sidebarLabel: i18n.global.t('sidebar'),
+	cancelable: true,
+	headerShadow: true,
+	smallHeader: false,
+});
+
+const emit = defineEmits(['cancel', 'update:modelValue']);
+
+const { t } = useI18n();
+
+const localActive = ref(false);
+
+const mainEl = ref<Element>();
+
+provide('main-element', mainEl);
+
+const sidebarWidth = 220;
+// Half of the space of the drawer (856 / 2 = 428)
+const sidebarMaxWidth = 428;
+
+const internalActive = computed({
+	get() {
+		return props.modelValue === undefined ? localActive.value : props.modelValue;
+	},
+	set(newActive: boolean) {
+		localActive.value = newActive;
+		emit('update:modelValue', newActive);
+	},
+});
+</script>
+
 <template>
 	<v-dialog v-model="internalActive" :persistent="persistent" placement="right" @esc="cancelable && $emit('cancel')">
 		<template #activator="{ on }">
@@ -20,12 +76,27 @@
 			<div class="content">
 				<v-overlay v-if="$slots.sidebar" absolute />
 
-				<nav v-if="$slots.sidebar" class="sidebar">
-					<slot name="sidebar" />
-				</nav>
+				<v-resizeable
+					v-if="$slots.sidebar"
+					:disabled="!sidebarResizeable"
+					:width="sidebarWidth"
+					:max-width="sidebarMaxWidth"
+				>
+					<nav class="sidebar">
+						<div class="sidebar-content">
+							<slot name="sidebar" />
+						</div>
+					</nav>
+				</v-resizeable>
 
-				<main ref="mainEl" class="main">
-					<header-bar :title="title" primary-action-icon="close" @primary="$emit('cancel')">
+				<main ref="mainEl" :class="{ main: true, 'small-search-input': $slots.sidebar }">
+					<header-bar
+						:title="title"
+						primary-action-icon="close"
+						:small="smallHeader"
+						:shadow="headerShadow"
+						@primary="$emit('cancel')"
+					>
 						<template #title><slot name="title" /></template>
 						<template #headline>
 							<slot name="subtitle">
@@ -60,52 +131,6 @@
 	</v-dialog>
 </template>
 
-<script setup lang="ts">
-import { useI18n } from 'vue-i18n';
-import { ref, computed, provide } from 'vue';
-import HeaderBar from '@/views/private/components/header-bar.vue';
-import { i18n } from '@/lang';
-
-interface Props {
-	title: string;
-	subtitle?: string | null;
-	modelValue?: boolean;
-	persistent?: boolean;
-	icon?: string;
-	sidebarLabel?: string;
-	cancelable?: boolean;
-}
-
-const props = withDefaults(defineProps<Props>(), {
-	subtitle: null,
-	modelValue: undefined,
-	persistent: false,
-	icon: 'box',
-	sidebarLabel: i18n.global.t('sidebar'),
-	cancelable: true,
-});
-
-const emit = defineEmits(['cancel', 'update:modelValue']);
-
-const { t } = useI18n();
-
-const localActive = ref(false);
-
-const mainEl = ref<Element>();
-
-provide('main-element', mainEl);
-
-const internalActive = computed({
-	get() {
-		return props.modelValue === undefined ? localActive.value : props.modelValue;
-	},
-	set(newActive: boolean) {
-		localActive.value = newActive;
-		emit('update:modelValue', newActive);
-	},
-});
-</script>
-
 <style>
 body {
 	--v-drawer-max-width: 856px;
@@ -120,12 +145,17 @@ body {
 	width: 100%;
 	max-width: var(--v-drawer-max-width);
 	height: 100%;
-	background-color: var(--background-page);
+	background-color: var(--theme--background);
 
 	.cancel {
+		display: none;
 		position: absolute;
 		top: 32px;
 		left: -76px;
+
+		@media (min-width: 960px) {
+			display: inline-flex;
+		}
 	}
 
 	.spacer {
@@ -136,7 +166,7 @@ body {
 		--v-button-background-color: var(--background-normal);
 		--v-button-background-color-active: var(--background-normal);
 		--v-button-background-color-hover: var(--background-normal-alt);
-		--v-button-color-disabled: var(--foreground-normal);
+		--v-button-color-disabled: var(--theme--foreground);
 	}
 
 	.content {
@@ -162,14 +192,17 @@ body {
 
 			@media (min-width: 960px) {
 				position: relative;
-				z-index: 2;
 				display: block;
-				flex-basis: 220px;
 				flex-shrink: 0;
 				width: 220px;
 				height: 100%;
-				height: auto;
 				background-color: var(--background-normal);
+			}
+
+			.sidebar-content {
+				height: 100%;
+				overflow-x: hidden;
+				overflow-y: auto;
 			}
 		}
 
@@ -196,6 +229,10 @@ body {
 				--content-padding-bottom: 132px;
 			}
 		}
+
+		.main.small-search-input:deep(.search-input.filter-active) {
+			width: 300px !important;
+		}
 	}
 
 	@media (min-width: 960px) {
@@ -204,6 +241,8 @@ body {
 }
 
 .mobile-sidebar {
+	position: relative;
+	z-index: 2;
 	margin: var(--content-padding);
 
 	nav {

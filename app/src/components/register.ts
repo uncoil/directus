@@ -4,7 +4,8 @@ import RenderTemplate from '@/views/private/components/render-template.vue';
 import SidebarDetail from '@/views/private/components/sidebar-detail.vue';
 import UserPopover from '@/views/private/components/user-popover.vue';
 import ValueNull from '@/views/private/components/value-null.vue';
-import DocsWrapper from '@/views/private/components/docs-wrapper.vue';
+import DrawerCollection from '@/views/private/components/drawer-collection.vue';
+import DrawerFiles from '@/views/private/components/drawer-files.vue';
 import DrawerItem from '@/views/private/components/drawer-item.vue';
 import DrawerBatch from '@/views/private/components/drawer-batch.vue';
 import { App } from 'vue';
@@ -54,6 +55,7 @@ import VPagination from './v-pagination.vue';
 import VProgressCircular from './v-progress-circular.vue';
 import VProgressLinear from './v-progress-linear.vue';
 import VRadio from './v-radio.vue';
+import VResizeable from './v-resizeable.vue';
 import VSelect from './v-select/v-select.vue';
 import VSheet from './v-sheet.vue';
 import VSkeletonLoader from './v-skeleton-loader.vue';
@@ -71,6 +73,7 @@ import VDatePicker from './v-date-picker.vue';
 import VEmojiPicker from './v-emoji-picker.vue';
 import VWorkspace from './v-workspace.vue';
 import VWorkspaceTile from './v-workspace-tile.vue';
+import VErrorBoundary from './v-error-boundary.vue';
 
 export function registerComponents(app: App): void {
 	app.component('VAvatar', VAvatar);
@@ -116,6 +119,7 @@ export function registerComponents(app: App): void {
 	app.component('VProgressCircular', VProgressCircular);
 	app.component('VProgressLinear', VProgressLinear);
 	app.component('VRadio', VRadio);
+	app.component('VResizeable', VResizeable);
 	app.component('VSelect', VSelect);
 	app.component('VSheet', VSheet);
 	app.component('VSkeletonLoader', VSkeletonLoader);
@@ -133,6 +137,7 @@ export function registerComponents(app: App): void {
 	app.component('VEmojiPicker', VEmojiPicker);
 	app.component('VWorkspace', VWorkspace);
 	app.component('VWorkspaceTile', VWorkspaceTile);
+	app.component('VErrorBoundary', VErrorBoundary);
 
 	app.component('TransitionBounce', TransitionBounce);
 	app.component('TransitionDialog', TransitionDialog);
@@ -144,7 +149,8 @@ export function registerComponents(app: App): void {
 	app.component('SidebarDetail', SidebarDetail);
 	app.component('UserPopover', UserPopover);
 	app.component('ValueNull', ValueNull);
-	app.component('DocsWrapper', DocsWrapper);
+	app.component('DrawerCollection', DrawerCollection);
+	app.component('DrawerFiles', DrawerFiles);
 	app.component('DrawerItem', DrawerItem);
 	app.component('DrawerBatch', DrawerBatch);
 }

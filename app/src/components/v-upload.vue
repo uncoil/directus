@@ -1,116 +1,27 @@
-<template>
-	<div
-		data-dropzone
-		class="v-upload"
-		:class="{ dragging, uploading }"
-		@dragenter.prevent="onDragEnter"
-		@dragover.prevent
-		@dragleave.prevent="onDragLeave"
-		@drop.stop.prevent="onDrop"
-	>
-		<template v-if="dragging">
-			<v-icon class="upload-icon" x-large name="file_upload" />
-			<p class="type-label">{{ t('drop_to_upload') }}</p>
-		</template>
-
-		<template v-else-if="uploading">
-			<p class="type-label">{{ progress }}%</p>
-			<p class="type-text">
-				{{
-					multiple && numberOfFiles > 1
-						? t('upload_files_indeterminate', { done: done, total: numberOfFiles })
-						: t('upload_file_indeterminate')
-				}}
-			</p>
-			<v-progress-linear :value="progress" rounded />
-		</template>
-
-		<template v-else>
-			<div class="actions">
-				<v-button v-tooltip="t('click_to_browse')" icon rounded secondary @click="openFileBrowser">
-					<input ref="input" class="browse" type="file" :multiple="multiple" @input="onBrowseSelect" />
-					<v-icon name="file_upload" />
-				</v-button>
-				<v-button
-					v-if="fromLibrary"
-					v-tooltip="t('choose_from_library')"
-					icon
-					rounded
-					secondary
-					@click="activeDialog = 'choose'"
-				>
-					<v-icon name="folder_open" />
-				</v-button>
-				<v-button v-if="fromUrl" v-tooltip="t('import_from_url')" icon rounded secondary @click="activeDialog = 'url'">
-					<v-icon name="link" />
-				</v-button>
-			</div>
-
-			<p class="type-label">{{ t('drag_file_here') }}</p>
-
-			<template v-if="fromUrl !== false || fromLibrary !== false">
-				<drawer-collection
-					collection="directus_files"
-					:active="activeDialog === 'choose'"
-					:multiple="multiple"
-					:filter="filterByFolder"
-					@update:active="activeDialog = null"
-					@input="setSelection"
-				/>
-
-				<v-dialog
-					:model-value="activeDialog === 'url'"
-					:persistent="urlLoading"
-					@esc="activeDialog = null"
-					@update:model-value="activeDialog = null"
-				>
-					<v-card>
-						<v-card-title>{{ t('import_from_url') }}</v-card-title>
-						<v-card-text>
-							<v-input v-model="url" autofocus :placeholder="t('url')" :nullable="false" :disabled="urlLoading" />
-						</v-card-text>
-						<v-card-actions>
-							<v-button :disabled="urlLoading" secondary @click="activeDialog = null">
-								{{ t('cancel') }}
-							</v-button>
-							<v-button :loading="urlLoading" :disabled="isValidURL === false" @click="importFromURL">
-								{{ t('import_label') }}
-							</v-button>
-						</v-card-actions>
-					</v-card>
-				</v-dialog>
-			</template>
-		</template>
-	</div>
-</template>
-
 <script setup lang="ts">
-import { useI18n } from 'vue-i18n';
-import { ref, computed } from 'vue';
-import { uploadFiles } from '@/utils/upload-files';
-import { uploadFile } from '@/utils/upload-file';
-import DrawerCollection from '@/views/private/components/drawer-collection.vue';
 import api from '@/api';
 import emitter, { Events } from '@/events';
 import { unexpectedError } from '@/utils/unexpected-error';
-import { Filter } from '@directus/shared/types';
+import { uploadFile } from '@/utils/upload-file';
+import { uploadFiles } from '@/utils/upload-files';
+import DrawerFiles from '@/views/private/components/drawer-files.vue';
+import { computed, ref } from 'vue';
+import { useI18n } from 'vue-i18n';
 
 interface Props {
 	multiple?: boolean;
 	preset?: Record<string, any>;
 	fileId?: string;
+	/** In case that the user isn't allowed to upload files */
+	fromUser?: boolean;
 	fromUrl?: boolean;
 	fromLibrary?: boolean;
 	folder?: string;
 }
 
 const props = withDefaults(defineProps<Props>(), {
-	multiple: false,
 	preset: () => ({}),
-	fileId: undefined,
-	fromUrl: false,
-	fromLibrary: false,
-	folder: undefined,
+	fromUser: true,
 });
 
 const emit = defineEmits(['input']);
@@ -124,10 +35,15 @@ const { setSelection } = useSelection();
 const activeDialog = ref<'choose' | 'url' | null>(null);
 const input = ref<HTMLInputElement>();
 
-const filterByFolder = computed(() => {
-	if (!props.folder) return undefined;
-	return { folder: { id: { _eq: props.folder } } } as Filter;
-});
+function validFiles(files: FileList) {
+	if (files.length === 0) return false;
+
+	for (const file of files) {
+		if (file.size === 0) return false;
+	}
+
+	return true;
+}
 
 function useUpload() {
 	const uploading = ref(false);
@@ -141,13 +57,16 @@ function useUpload() {
 		uploading.value = true;
 		progress.value = 0;
 
-		const folderPreset: { folder?: string } = {};
-
-		if (props.folder) {
-			folderPreset.folder = props.folder;
-		}
+		const preset = {
+			...props.preset,
+			...(props.folder && { folder: props.folder }),
+		};
 
 		try {
+			if (!validFiles(files)) {
+				throw new Error('An error has occurred while uploading the files.');
+			}
+
 			numberOfFiles.value = files.length;
 
 			if (props.multiple === true) {
@@ -156,10 +75,7 @@ function useUpload() {
 						progress.value = Math.round(percentage.reduce((acc, cur) => (acc += cur)) / files.length);
 						done.value = percentage.filter((p) => p === 100).length;
 					},
-					preset: {
-						...props.preset,
-						...folderPreset,
-					},
+					preset,
 				});
 
 				uploadedFiles && emit('input', uploadedFiles);
@@ -170,16 +86,14 @@ function useUpload() {
 						done.value = percentage === 100 ? 1 : 0;
 					},
 					fileId: props.fileId,
-					preset: {
-						...props.preset,
-						...folderPreset,
-					},
+					preset,
 				});
 
 				uploadedFile && emit('input', uploadedFile);
 			}
 		} catch (err: any) {
 			unexpectedError(err);
+			emit('input', null);
 		} finally {
 			uploading.value = false;
 			done.value = 0;
@@ -225,7 +139,7 @@ function useDragging() {
 
 		const files = event.dataTransfer?.files;
 
-		if (files) {
+		if (files && props.fromUser) {
 			upload(files);
 		}
 	}
@@ -234,13 +148,29 @@ function useDragging() {
 function useSelection() {
 	return { setSelection };
 
-	async function setSelection(selection: string[]) {
-		if (selection[0]) {
-			const id = selection[0];
-			const fileResponse = await api.get(`/files/${id}`);
-			emit('input', fileResponse.data.data);
+	async function setSelection(selection: (string | number)[] | null) {
+		if (!selection) return;
+
+		if (props.multiple) {
+			const filesResponse = await api.get(`/files`, {
+				params: {
+					filter: {
+						id: {
+							_in: selection,
+						},
+					},
+				},
+			});
+
+			emit('input', filesResponse.data.data);
 		} else {
-			emit('input', null);
+			if (selection[0]) {
+				const id = selection[0];
+				const fileResponse = await api.get(`/files/${id}`);
+				emit('input', fileResponse.data.data);
+			} else {
+				emit('input', null);
+			}
 		}
 	}
 }
@@ -263,12 +193,16 @@ function useURLImport() {
 	async function importFromURL() {
 		loading.value = true;
 
+		const data = {
+			...props.preset,
+			...(props.folder && { folder: props.folder }),
+			id: props.fileId,
+		};
+
 		try {
 			const response = await api.post(`/files/import`, {
 				url: url.value,
-				data: {
-					folder: props.folder,
-				},
+				data,
 			});
 
 			emitter.emit(Events.upload);
@@ -294,6 +228,98 @@ function openFileBrowser() {
 }
 </script>
 
+<template>
+	<div
+		data-dropzone
+		class="v-upload"
+		:class="{ dragging: dragging && fromUser, uploading }"
+		@dragenter.prevent="onDragEnter"
+		@dragover.prevent
+		@dragleave.prevent="onDragLeave"
+		@drop.stop.prevent="onDrop"
+	>
+		<template v-if="dragging && fromUser">
+			<v-icon class="upload-icon" x-large name="file_upload" />
+			<p class="type-label">{{ t('drop_to_upload') }}</p>
+		</template>
+
+		<template v-else-if="uploading">
+			<p class="type-label">{{ progress }}%</p>
+			<p class="type-text">
+				{{
+					multiple && numberOfFiles > 1
+						? t('upload_files_indeterminate', { done: done, total: numberOfFiles })
+						: t('upload_file_indeterminate')
+				}}
+			</p>
+			<v-progress-linear :value="progress" rounded />
+		</template>
+
+		<template v-else>
+			<div class="actions">
+				<v-button v-if="fromUser" v-tooltip="t('click_to_browse')" icon rounded secondary @click="openFileBrowser">
+					<input ref="input" class="browse" type="file" :multiple="multiple" @input="onBrowseSelect" />
+					<v-icon name="file_upload" />
+				</v-button>
+				<v-button
+					v-if="fromLibrary"
+					v-tooltip="t('choose_from_library')"
+					icon
+					rounded
+					secondary
+					@click="activeDialog = 'choose'"
+				>
+					<v-icon name="folder_open" />
+				</v-button>
+				<v-button
+					v-if="fromUrl && fromUser"
+					v-tooltip="t('import_from_url')"
+					icon
+					rounded
+					secondary
+					@click="activeDialog = 'url'"
+				>
+					<v-icon name="link" />
+				</v-button>
+			</div>
+
+			<p class="type-label">{{ t(fromUser ? 'drag_file_here' : 'choose_from_library') }}</p>
+
+			<template v-if="fromUrl !== false || fromLibrary !== false">
+				<drawer-files
+					:active="activeDialog === 'choose'"
+					:multiple="multiple"
+					:folder="folder"
+					@update:active="activeDialog = null"
+					@input="setSelection"
+				/>
+
+				<v-dialog
+					:model-value="activeDialog === 'url'"
+					:persistent="urlLoading"
+					@esc="activeDialog = null"
+					@update:model-value="activeDialog = null"
+				>
+					<v-card>
+						<v-card-title>{{ t('import_from_url') }}</v-card-title>
+						<v-card-text>
+							<v-input v-model="url" autofocus :placeholder="t('url')" :nullable="false" :disabled="urlLoading" />
+						</v-card-text>
+						<v-card-actions>
+							<v-button :disabled="urlLoading" secondary @click="activeDialog = null">
+								{{ t('cancel') }}
+							</v-button>
+							<v-button :loading="urlLoading" :disabled="isValidURL === false" @click="importFromURL">
+								{{ t('import_label') }}
+							</v-button>
+						</v-card-actions>
+					</v-card>
+				</v-dialog>
+			</template>
+		</template>
+	</div>
+</template>
+
 <style lang="scss" scoped>
 .v-upload {
 	position: relative;
@@ -302,7 +328,7 @@ function openFileBrowser() {
 	justify-content: center;
 	min-height: var(--input-height-tall);
 	padding: 32px;
-	color: var(--foreground-subdued);
+	color: var(--theme--foreground-subdued);
 	text-align: center;
 	border: 2px dashed var(--border-normal);
 	border-radius: var(--border-radius);
@@ -345,9 +371,9 @@ function openFileBrowser() {
 }
 
 .dragging {
-	color: var(--primary);
-	background-color: var(--primary-alt);
-	border-color: var(--primary);
+	color: var(--theme--primary);
+	background-color: var(--theme--primary-background);
+	border-color: var(--theme--primary);
 
 	* {
 		pointer-events: none;
@@ -365,8 +391,8 @@ function openFileBrowser() {
 	--v-progress-linear-height: 8px;
 
 	color: var(--white);
-	background-color: var(--primary);
-	border-color: var(--primary);
+	background-color: var(--theme--primary);
+	border-color: var(--theme--primary);
 	border-style: solid;
 
 	.v-progress-linear {

@@ -1,3 +1,25 @@
+<script setup lang="ts">
+import { storeToRefs } from 'pinia';
+import { useI18n } from 'vue-i18n';
+import SidebarButton from './sidebar-button.vue';
+import NotificationItem from './notification-item.vue';
+import { useNotificationsStore } from '@/stores/notifications';
+
+defineProps<{
+	sidebarOpen?: boolean;
+	modelValue?: boolean;
+}>();
+
+defineEmits<{
+	(e: 'update:modelValue', value: boolean): void;
+}>();
+
+const { t } = useI18n();
+
+const notificationsStore = useNotificationsStore();
+const { lastFour } = storeToRefs(notificationsStore);
+</script>
+
 <template>
 	<div class="notifications-preview">
 		<transition-expand tag="div">
@@ -14,7 +36,7 @@
 		</transition-expand>
 
 		<sidebar-button
-			v-tooltip.left="t('activity_log')"
+			v-tooltip.left="!sidebarOpen && t('activity_log')"
 			:active="modelValue"
 			class="toggle"
 			icon="pending_actions"
@@ -25,35 +47,6 @@
 	</div>
 </template>
 
-<script lang="ts">
-import { useI18n } from 'vue-i18n';
-import { defineComponent } from 'vue';
-import SidebarButton from './sidebar-button.vue';
-import NotificationItem from './notification-item.vue';
-import { useNotificationsStore } from '@/stores/notifications';
-
-export default defineComponent({
-	components: { SidebarButton, NotificationItem },
-	props: {
-		sidebarOpen: {
-			type: Boolean,
-			default: false,
-		},
-		modelValue: {
-			type: Boolean,
-			default: false,
-		},
-	},
-	emits: ['update:modelValue'],
-	setup() {
-		const { t } = useI18n();
-
-		const notificationsStore = useNotificationsStore();
-		return { t, lastFour: notificationsStore.lastFour };
-	},
-});
-</script>
-
 <style lang="scss" scoped>
 .notifications-preview {
 	position: relative;
@@ -61,12 +54,12 @@ export default defineComponent({
 
 .link {
 	display: block;
-	color: var(--foreground-subdued);
+	color: var(--theme--foreground-subdued);
 	text-align: center;
 	text-decoration: none;
 
 	&:hover {
-		color: var(--foreground-normal);
+		color: var(--theme--foreground);
 	}
 
 	&.has-items {

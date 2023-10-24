@@ -1,3 +1,70 @@
+<script setup lang="ts">
+import formatTitle from '@directus/format-title';
+import { isEmpty } from 'lodash';
+import { computed } from 'vue';
+
+type Choice = {
+	value: string;
+	text: string;
+	foreground: string | null;
+	background: string | null;
+};
+
+const props = withDefaults(
+	defineProps<{
+		value: string | string[];
+		type: 'text' | 'string' | 'json' | 'csv';
+		format?: boolean;
+		showAsDot?: boolean;
+		choices?: Choice[];
+	}>(),
+	{
+		format: true,
+		choices: () => [],
+	}
+);
+
+const items = computed(() => {
+	let items: string[];
+
+	if (isEmpty(props.value)) items = [];
+	else if (props.type === 'string') items = [props.value as string];
+	else items = props.value as string[];
+
+	return items.map((item) => {
+		const choice = (props.choices || []).find((choice) => choice.value === item);
+
+		let itemStringValue: string;
+
+		if (typeof item === 'object') {
+			itemStringValue = JSON.stringify(item);
+		} else {
+			if (props.format) {
+				itemStringValue = formatTitle(item);
+			} else {
+				itemStringValue = item;
+			}
+		}
+
+		if (choice === undefined) {
+			return {
+				value: item,
+				text: itemStringValue,
+				foreground: 'var(--theme--foreground)',
+				background: 'var(--background-normal)',
+			};
+		} else {
+			return {
+				value: item,
+				text: choice.text || itemStringValue,
+				foreground: choice.foreground || 'var(--theme--foreground)',
+				background: choice.background || 'var(--background-normal)',
+			};
+		}
+	});
+});
+</script>
+
 <template>
 	<div class="display-labels">
 		<template v-if="!showAsDot">
@@ -20,88 +87,6 @@
 		</template>
 	</div>
 </template>
-
-<script lang="ts">
-import { defineComponent, computed, PropType } from 'vue';
-import formatTitle from '@directus/format-title';
-import { isEmpty } from 'lodash';
-
-type Choice = {
-	value: string;
-	text: string;
-	foreground: string | null;
-	background: string | null;
-};
-
-export default defineComponent({
-	props: {
-		value: {
-			type: [String, Array] as PropType<string | string[]>,
-			required: true,
-		},
-		format: {
-			type: Boolean,
-			default: true,
-		},
-		showAsDot: {
-			type: Boolean,
-			default: false,
-		},
-		choices: {
-			type: Array as PropType<Choice[]>,
-			default: () => [],
-		},
-		type: {
-			type: String,
-			required: true,
-			validator: (val: string) => ['text', 'string', 'json', 'csv'].includes(val),
-		},
-	},
-	setup(props) {
-		const items = computed(() => {
-			let items: string[];
-
-			if (isEmpty(props.value)) items = [];
-			else if (props.type === 'string') items = [props.value as string];
-			else items = props.value as string[];
-
-			return items.map((item) => {
-				const choice = (props.choices || []).find((choice) => choice.value === item);
-
-				let itemStringValue: string;
-
-				if (typeof item === 'object') {
-					itemStringValue = JSON.stringify(item);
-				} else {
-					if (props.format) {
-						itemStringValue = formatTitle(item);
-					} else {
-						itemStringValue = item;
-					}
-				}
-
-				if (choice === undefined) {
-					return {
-						value: item,
-						text: itemStringValue,
-						foreground: 'var(--foreground-normal)',
-						background: 'var(--background-normal)',
-					};
-				} else {
-					return {
-						value: item,
-						text: choice.text || itemStringValue,
-						foreground: choice.foreground || 'var(--foreground-normal)',
-						background: choice.background || 'var(--background-normal)',
-					};
-				}
-			});
-		});
-
-		return { items };
-	},
-});
-</script>
 
 <style lang="scss" scoped>
 .display-labels {

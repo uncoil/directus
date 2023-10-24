@@ -52,6 +52,13 @@ or: Vagy
 init: Init
 dataset_too_large_currently_showing_n_items: Túlméretes adathalmaz. Jelenleg az első {n} adat jelenik meg.
 modifier: Módosító
+extension_interface: Kezelőfelület
+extension_display: Megjelenés
+extension_layout: Elrendezés
+extension_panel: Panel
+extension_hook: Beavatkozási rutin
+extension_modules: Modulok
+enable: Engedélyez
 custom: Egyedi
 hook: Beavatkozási rutin
 fill_width: Teret kitöltő
@@ -80,14 +87,6 @@ create_user: Felhasználó létrehozása
 message: Üzenet
 delete_panel: Panel törlése
 create_webhook: Webhook létrehozása
-create_translation_string: Fordítás létrehozása
-no_translation_string: Nincs lefordított karakterlánc
-no_translation_string_copy: Nincs még lefordított karakterlánc.
-translation_string_key_placeholder: Fordítási karakterlánc kulcs...
-translation_string_translations_placeholder: Új fordítás hozzáadása
-edit_translation_string: Fordítás módosítása
-delete_translation_string_copy: >-
-  Biztosan törörlni szeretné a "{key}" fordítási karakterláncot? Ez a művelet nem visszavonható.
 invite_users: Felhasználók meghívása
 invite: Meghívás
 email_already_invited: Az "{email}" e-mail címet már meghívták
@@ -103,6 +102,7 @@ rename_folder: Mappa átnevezése
 delete_folder: Mappa törlése
 prefix: Előtag
 suffix: Utótag
+promote_version_preview: Előnézet
 reset_bookmark: Könyvjelző visszaállítása
 update_bookmark: Könyvjelző frissítése
 delete_bookmark: Könyvjelző törlése
@@ -118,20 +118,12 @@ public_label: Nyilvános
 public_description: API adatok hozzáférése bejelentkezés nélkül.
 admin_description: Alapértelmezett adminisztrátori szerepkör korlátlan alkalmazás és API hozzáféréssel.
 not_allowed: Nem engedélyezett
-directus_version: Directus verzió
-node_version: Node verzió
-node_uptime: Node futásidő
-os_type: Operációs rendszer típusa
-os_version: Operációs rendszer verziója
-os_uptime: Operációs rendszer futásideje
-os_totalmem: Operációs rendszer memóriája
 archive: Archiválás
 archive_confirm: Biztosan törölni szeretnéd ezt az elemet?
 archive_confirm_count: >-
   Egy elem sincs kiválasztva `| Biztosan archiválni akarod ezt az elemet? | Biztosan archiválni akarod ezt a {count} elemet?
 reset_system_permissions_to: 'Rendszerjogosultságok visszaállítása a következőkre:'
 reset_system_permissions_copy: Ez a művelet felülírja a rendszergyűjteményekre alkalmazott egyéni engedélyeid. Biztos vagy benne?
-the_following_are_minimum_permissions: Az alábbi minimális engedélyek szükségesek, ha az "Alkalmazás-hozzáférés" engedélyezve van. A jogosultságok ezen felül kiterjeszthetőek, de nem szűkíthetőek.
 app_access_minimum: App hozzáférés minimuma
 recommended_defaults: Ajánlott alapértelmezések
 unarchive: Archiválás visszavonása
@@ -245,6 +237,7 @@ float: Törtszám
 integer: Egész szám
 json: JSON
 xml: XML
+yaml: YAML
 string: Karaktersor
 text: Szöveg
 time: Idő
@@ -295,6 +288,7 @@ o2m_relationship: Egy a Többhöz kapcsolat
 m2m_relationship: Több a Többhöz kapcsolat
 m2a_relationship: M2A kapcsolat (polimorf asszociációs leképezéshez több táblából)
 invalid_item: Érvénytelen elem
+modal: Ablak
 next: Következő
 field_name: Mezőnév
 translations: Fordítások
@@ -349,7 +343,7 @@ revision_delta_reverted: Visszaállítva
 revision_delta_update_message: Ezt a mezőt frissítették, de értékét biztonsági okokból elrejtjük
 revision_delta_other: Változat
 revision_delta_by: '{date} {user} által'
-presentation_text_values_cannot_be_reimported: "Prezentációs szöveget használ, az értékek nem importálhatók újra."
+presentation_text_values_cannot_be_reimported: 'Prezentációs szöveget használ, az értékek nem importálhatók újra.'
 download_page_as_csv: 'Letöltés CSV-ként'
 private_user: Privát felhasználó
 creation_preview: Létrehozás előnézete
@@ -387,6 +381,7 @@ move: Áthelyezés
 system: Rendszer
 add_field_related: Mező hozzáadása kapcsolódó gyűjteményhez
 interface_label: Kezelőfelület
+display_label: Megjelenés
 today: Ma
 yesterday: Tegnap
 delete_comment: Hozzászólás törlése
@@ -437,7 +432,6 @@ dimensions: Méretek
 size: Méret
 created: Létrehozva
 modified: Módosítva
-checksum: Ellenőrző
 owner: Tulajdonos
 edited_by: Módosította
 folder: Könyvtár
@@ -460,11 +454,6 @@ open_file_in_tab: Megnyitás új fülön
 start_export: Indítsa el az exportálást
 not_available_for_local_downloads: Nem érhető el helyi letöltésekhez
 exporting_all_items_in_collection: A(z) {collection} összes {total} elemének exportálása.
-exporting_limited_items_in_collection: A(z) {total} elemből {limit} exportálása a(z) {collection} gyűjteménybe.
-exporting_no_items_to_export: Nincs exportálandó tétel. Módosítsa az alábbi exportálási konfigurációt.
-exporting_download_hint: Ha elkészült, ez a {format} fájl automatikusan letöltődik az eszközére.
-exporting_batch_hint: Ezt az exportálást kötegekben dolgozzuk fel, és a befejezést követően a {format} fájl a Fájlkönyvtárba kerül.
-exporting_batch_hint_forced: A tételek nagy száma miatt ezt az exportálást kötegekben kell feldolgozni, és a befejezés után a {format} fájl a Fájltárba kerül.
 collection_key: Gyűjtemény kulcsa
 name: Név
 primary_key_field: Elsődleges kulcs mező
@@ -489,10 +478,8 @@ enable_select_button: Kiválasztás gomb engedélyezése
 allow_duplicates: Másolatok engedélyezése
 comments: Hozzászólások
 no_comments: Még nincs hozzászólás
-click_to_expand: Kattintson a kibontáshoz
 select_item: Elem kiválasztása
 no_items: Nincs megjeleníthető elem
-search_items: Tételek keresése...
 disabled: Letiltva
 information: Információ
 report_bug: Hibajelentés
@@ -573,6 +560,8 @@ select_an_item: Válassz egy elemet...
 edit: Szerkesztés
 enabled: Engedélyezve
 disable_tfa: Kétlépcsős hitelesítés kikapcsolása
+admin_disable_tfa_text: Biztosan kikapcsolja a kétfaktoros azonosítást a felhasználónak?
+tfa_setup: 2FA beállítása
 tfa_scan_code: Olvasd be a kódot a hitelesítő alkalmazással a kétszintű beléptetés beállításának befejezéséhez
 enter_otp_to_disable_tfa: Írd be az egyszeri jelszót a kétszintű hitelesítés kikapcsolásához
 create_account: Fiók létrehozása
@@ -598,7 +587,6 @@ errors:
   RECORD_NOT_UNIQUE: Ismétlődő értéket észleltem
   USER_SUSPENDED: Felhasználó felfüggesztve
   CONTAINS_NULL_VALUES: A mező null értékeket tartalmaz
-  UNPROCESSABLE_ENTITY: Feldolgozhatatlan entitás
   INTERNAL_SERVER_ERROR: Váratlan hiba történt
   NOT_NULL_VIOLATION: Az érték nem lehet null
   ILLEGAL_ASSET_TRANSFORMATION: A forráskép túl nagy az előnézethez
@@ -784,10 +772,11 @@ label: Címke
 flows: Folyamatok
 flow: Folyamat
 select_a_flow: Válasszon egy folyamatot
-run_flow_on_current_collection: Futtassa a folyamatot az aktuális gyűjteményben
-run_flow_on_current: Folyamat futtatása a jelenlegi tételen
+run_flow_on_current_collection: Folyamat futtatása az aktuális gyűjteményen
+run_flow_on_current: Folyamat futtatása a jelenlegi elemen
 run_flow_on_current_edited_confirm: Lehetséges, hogy a tétel frissítve lesz a futtatás miatt, biztosan folytatja?
-run_flow_on_selected: Válassz ki egy vagy több elemet | Futtasd a folyamatot 1 kiválasztott elemen | Futtasd a folyamatot {n} kiválasztott elemen
+run_flow_on_selected: Futtatás a kiválasztott elemeken
+run_flow: Folyamat futtatása
 run_flow_success: Folyamat "{flow}" sikeresen futtatva
 trigger: Eseményindító
 trigger_options: Trigger opciók
@@ -943,12 +932,11 @@ editing_unit: '{unit} szerkesztése'
 editing_in_batch: '{count} elem szerkesztése'
 no_options_available: Nincs választási lehetőség
 settings_data_model: Adatmodell
-settings_permissions: Szerepkörök és jogosultságok
-settings_project: Projekt beállításai
+settings_project: Beállítások
 settings_webhooks: Webhookok
 settings_flows: Folyamatok
-settings_presets: Alapértelmezések és Könyvjelzők
-settings_translation_strings: Fordítási karakterláncok
+settings_presets: Könyvjelzők
+settings_translations: Fordítások
 one_or_more_options_are_missing: Egy vagy több opció hiányzik
 scope: Hatókör
 actions: Műveletek
@@ -983,7 +971,6 @@ page_help_files_collection: >-
   **Fájlok könyvtára** - A projektbe feltöltött összes fájleszköz listája. Testre szabhatja az elrendezést, a szűrőket, a rendezési nézetet, és akár könyvjelzőket is menthet a különböző konfigurációkról a gyors hozzáférés érdekében.
 page_help_files_item: >-
   **File Részletek** - A fájl metaadatainak kezelésére, az eredeti eszköz szerkesztésére és a hozzáférési beállítások frissítésére szolgáló űrlap.
-page_help_settings_project: "**Projektbeállítások** - A projektje globális konfigurációs beállításai."
 page_help_settings_datamodel_collections: >-
   **Adatmodell: Gyűjtemények** - Az összes elérhető gyűjtemény listája. Ide tartoznak a látható, rejtett és rendszergyűjtemények, valamint a hozzáadható nem kezelt adatbázis táblák.
 page_help_settings_datamodel_fields: >-
@@ -998,7 +985,6 @@ page_help_settings_webhooks_collection: '**Webhookok Böngészése** — A proje
 page_help_settings_webhooks_item: '**Webhook Részletei** — A projekt webhookjainak létrehozására és kezelésére szolgáló űrlap.'
 page_help_settings_flows_collection: '**Folyamatok tallózása** — A projekten belüli összes folyamat felsorolása.'
 page_help_settings_flows_item: '**A folyamat részletei** — Munkaterület egy vagy több művelet kezeléséhez.'
-page_help_settings_translation_strings_collection: '**Tallózás a fordítási karakterláncok között** — A projekten belüli összes fordítási karakterlánc felsorolása.'
 page_help_users_collection: '**Felhasználók Könyvtára** - A projekt összes rendszerfelhasználójának listája.'
 page_help_users_item: >-
   **Felhasználó részletei** - Kezelje fiókinformációit, vagy tekintse meg más felhasználók adatait.
@@ -1106,10 +1092,6 @@ fields:
     tags: Címkék
     user_preferences: Felhasználói beállítások
     language: Nyelv
-    theme: Téma
-    theme_auto: Automatikus (A rendszeren alapuló)
-    theme_light: Világos mód
-    theme_dark: Sötét mód
     tfa_secret: Kétlépcsős hitelesítés
     admin_options: Admin beállítások
     status: Állapot
@@ -1147,7 +1129,6 @@ fields:
     project_color: Projekt színe
     project_logo: Projekt logója
     default_language: Alapértelmezett nyelv
-    branding: Márkaépítés és stílus
     public_foreground: Nyilvános előtér
     public_background: Nyilvános háttér
     public_note: Nyilvános megjegyzés
@@ -1207,7 +1188,6 @@ field_options:
   directus_settings:
     project_name_placeholder: Saját projektem...
     project_color_note: Bejelentkezés és logó háttér
-    project_logo_note: Fehér 40x40 SVG/PNG
     public_note_placeholder: Egy rövid, nyilvános üzenet, mely támogatja a markdown formázást...
     security_divider_title: Biztonság
     auth_password_policy:
@@ -1261,6 +1241,7 @@ field_options:
     sort_field: Mező kiválasztása...
     accountability_divider: Elszámoltathatóság
     duplication_divider: Duplikálás
+    preview_divider: Előnézet
   directus_files:
     title: Egy egyedi cím...
     description: Egy opcionális leírás...
@@ -1318,6 +1299,8 @@ start_collapsed: Kezdetben összecsukva
 block: Blokk
 inline: Inline
 comment: Hozzászólás
+live_preview:
+  new_window: Megnyitás új ablakban
 shares: Megosztások
 unlimited_usage: Korlátlan használat
 uses_left: Nincs használat hátra | 1 használat maradt | {n} használat maradt
@@ -1577,6 +1560,8 @@ interfaces:
   system-interface-options:
     interface-options: Interfész opciók
     description: Egy modál egy interfész opcióinak kiválasztásához
+  system-display:
+    display: Megjelenés
   list-m2m:
     many-to-many: Sok a sokhoz
     description: Több kapcsolódó csomóponti elem kiválasztása
@@ -1625,9 +1610,7 @@ interfaces:
     description: Több kapcsolódó elem választása
     no_collection: A gyűjtemény nem található
   system-folder:
-    folder: Könyvtár
     description: Válasszon egy mappát
-    field_hint: Mappa a feltöltött fájlok számára. Nem érinti a meglévő fájlokat.
     root_name: Fájlok gyökérkönyvtára
     system_default: Rendszer alapértelmezései
   select-radio:
@@ -1640,9 +1623,9 @@ interfaces:
     add_label: '"Új létrehozása" címke'
     sort: Rendezés
     sort_placeholder: Manuális
-    field_name_placeholder: Mezőnév megadása...
     field_note_placeholder: Megjegyzés hozzáadása mezőhöz...
     incompatible_data: Az aktuális adatok nem kompatibilisek az átjátszó interfésszel, és felülbírálásra kerülnek, amikor elemeket adunk az átjátszóhoz
+    interface_group: Interfész opciók
   slider:
     slider: Csúszka
     description: Válasszon számot csúszka segítségével
@@ -1682,7 +1665,6 @@ interfaces:
     input-translated-string: Lefordított szavak
     description: Válassza ki vagy adja hozzá a fordítási karakterláncot
     search_placeholder: Keresés...
-    new_translation_string: Új fordítás
   boolean:
     toggle: Váltás
     description: Be- és kikapcsolás közti váltás
@@ -1719,6 +1701,16 @@ interfaces:
     folder_note: Mappa a feltöltött fájlok számára. Nem érinti a meglévő fájlokat.
     imageToken: Statikus hozzáférési token
     imageToken_label: A statikus hozzáférési token hozzá van rendelve az eszközök URL-jéhez
+  input-block-editor:
+    tools: Eszköztár
+    tools_options:
+      header: Fejléc
+      nestedlist: Lista
+      embed: Beágyazás
+      code: Kód
+      image: Kép
+      table: Táblázat
+      underline: Aláhúzott
   input-autocomplete-api:
     input-autocomplete-api: Automatikus kiegészítés (API)
     description: Külső API-értékek keresési típusvezetője (automatikus kiegészítés).
@@ -1937,6 +1929,29 @@ layouts:
     show: Mutasd
     no_group: Keresés és szűrés engedélyezése
     not_all_loaded: Csak az első 100 elemet sikerült betölteni.
+horizontal: Horizontális
+vertical: Függőleges
+x_axis: X-tengely
+y_axis: Y tengely
+y_axis_function: Y tengelyes függvény
+show_x_only: Csak az X tengely látszódjon
+show_y_only: Csak az Y tengely látszódjon
+show_data_label: Adat címke mutatása
+both: Mindkettő
+show_axis_labels: Tengely címke mutatása
+function: Függvény
+half_circle: Félkör
+full_circle: Teljes kör
+stroke_width: Tollvastagság
+rounded_stroke: Görbe vonal
+thin: Vékony
+medium: Közepes
+broad: Széles
+show_labels: Címkék megjelenítése
+show_legend: Mutasd a magyarázatot
+right: Jobb
+left: Balra
+donut: Fánk
 panels:
   metric:
     name: Metrikus
@@ -1958,64 +1973,25 @@ panels:
   barchart:
     name: Oszlopdiagram
     description: Sáv- vagy oszlopdiagramok értékcsoportok összehasonlításához
-    select_field: Ki kell választanod egy mezőt!
-    select_collection: Ki kell választanod egy gyűjteményt!
-    select_x_axis: Ki kell választanod egy X-tengelyt.
-    function: Függvény
     horizontal: Horizontális
-    x_axis_grouping: X-tengely csoportos aggregálás
-    x_axis: X-tengely
-    y_axis_function: Y tengelyes függvény
-    y_axis: Y tengely
-    show_x_axis: X tengely megjelenítése
-    show_y_axis: Y tengely megjelenítése
-    show_data_label: Mutasd az adat fejlécét
-    group_by: Csoportosítási szempont
-    group_and_function: Mind a csoportot, mind a függvényt fel kell vennie vagy ki kell hagynia.
-    y_axis_NaN: Az Y tengelynek számnak kell lennie.
-    y_axis_conditional_one: A feltétel értéke
-    y_axis_conditional_two: számnak kell lennie.
+    select_collection: Ki kell választanod egy gyűjteményt!
   linechart:
     name: Vonaldiagram
-    select_field: Ki kell választanod egy mezőt!
-    select_collection: Ki kell választanod egy gyűjteményt!
-    select_x_axis: Ki kell választanod egy X-tengelyt.
-    function: Függvény
-    x_axis: X-tengely
-    x_axis_decimals: X-tengely tizedesjegyei
+    description: Vonaldiagram egy mező változásának összehasonlításához
+    disabled_grouping: Kikapcsolva, amikor csoportosítás van kiválasztva.
     disabled_no_grouping: Letiltva, ha nincs kiválasztva csoportosítás.
-    y_axis: Y tengely
-    datasets: Adatkészletek
-    show_legend: Mutasd a magyarázatot
     show_marker: Eszköztipp-jelölő megjelenítése
-    include_y_axis: Minden adatkészlethez meg kell adnia Y-tengelyt, ha nincs csoport megadva.
-    group_and_function: Mind a csoportot, mind a függvényt fel kell vennie vagy ki kell hagynia.
+    curve_type: Görbe típusa
     smooth: Gördülékeny
     straight: Egyenes
     step_line: Lécsőzetes
+    show_legend: Mutasd a magyarázatot
   meter:
     name: Mértékegység
     description: Értékek nyomonkövetése
-    half_circle: Félkör
-    full_circle: Teljes kör
-    stroke_width: Tollvastagság
-    select_max_value: Ki kell választania egy maximális értéket.
-    max_greater_than_zero: A maximumnak 0-nál nagyobbnak kell lennie.
-    select_field: Ki kell választani egy mezőt.
-    select_collection: Ki kell választani egy gyűjteményt.
-    function: Függvény
-    thin: Vékony
-    medium: Közepes
-    broad: Széles
   piechart:
     name: Torta vagy fánk diagram
-    function: Függvény
-    donut: Fánk
-    show_legend: Mutasd a magyarázatot
-    right: Jobb
-    bottom: Alsó
-    monochrome: Monokróm
-    monochrome_color: Monokróm szín
+    description: Kör diagram, amely a csoportok arányát mutatja egy oszlopon
   variable:
     name: Globális változó
     description: Állítson be egy globális értéket más panelek szűrőiben való használatra
@@ -2093,6 +2069,10 @@ operations:
     key: Azonosítók
     payload: Adattartalom
     query: Lekérdezés
+  json-web-token:
+    payload: Adattartalom
+    token: Token
+    options: Lehetőségek
   log:
     name: Jelentkezzen be a konzolba
     description: Írjon ki valamit a konzolra
@@ -2104,15 +2084,17 @@ operations:
     to: Neki
     to_placeholder: Adjon hozzá e-mail címeket, és nyomja meg az entert...
     body: Törzsszöveg
+    template: Sablon
+    data: Adat
   notification:
     name: Értesítés küldése
     description: Alkalmazáson belüli értesítés küldése egy vagy több felhasználónak
     recipient: Felhasználó
-    recipient_placeholder: Adjon hozzá felhasználói UUID-t, és nyomja meg az Enter-t...
     message: Üzenet
+    subject: Tárgy
   request:
     name: Webhook / URL-kérés
-    description: "Kérjen egy URL-t"
+    description: 'Kérjen egy URL-t'
     url: URL
     url_placeholder: https://pelda.hu/pelda
     method: Metódus
@@ -2134,3 +2116,20 @@ operations:
     flows: Folyamatok
     flow: Folyamat
     data: Adat
+    iteration_mode: Iteráló mód
+    iteration_mode_note: Tömbökön iteráló mód.
+    serial: Soros
+    parallel: Párhuzamos
+    batch: Tömeges
+    batch_size: Darabszám
+standard: Normál
+compact: Kompakt
+style: Stílus
+fonts:
+  thin: Vékony
+  normal: Normál
+  medium: Közepes
+  bold: Félkövér
+  black: Fekete
+  italic: Dőlt
+  auto: Automatikus

@@ -1,14 +1,16 @@
 import { useCollectionsStore } from '@/stores/collections';
 import { getGroups } from '@/utils/get-groups';
-import { Filter } from '@directus/shared/types';
-import { definePanel } from '@directus/shared/utils';
+import { definePanel } from '@directus/extensions';
+import { Filter } from '@directus/types';
 import PanelTimeSeries from './panel-time-series.vue';
+import PreviewSVG from './preview.svg?raw';
 
 export default definePanel({
 	id: 'time-series',
 	name: '$t:panels.time_series.name',
 	description: '$t:panels.time_series.description',
 	icon: 'show_chart',
+	preview: PreviewSVG,
 	query(options) {
 		if (!options?.function || !options.valueField || !options.dateField) {
 			return;
@@ -53,6 +55,7 @@ export default definePanel({
 
 		function getParsedOptionsFilter(filter: string | undefined) {
 			if (!filter) return {};
+
 			try {
 				return JSON.parse(filter);
 			} catch {
@@ -378,6 +381,7 @@ export default definePanel({
 				interface: 'system-filter',
 				options: {
 					collectionField: 'collection',
+					relationalFieldSelectable: false,
 				},
 			},
 		},

@@ -1,3 +1,156 @@
+<script setup lang="ts">
+import { useFieldsStore } from '@/stores/fields';
+import { useRelationsStore } from '@/stores/relations';
+import { FieldFunction, Filter, Type } from '@directus/types';
+import {
+	getFilterOperatorsForType,
+	getOutputTypeForFunction,
+	parseFilterFunctionPath,
+	parseJSON,
+} from '@directus/utils';
+import { cloneDeep, get, isEmpty, set } from 'lodash';
+import { computed, inject, ref } from 'vue';
+import { useI18n } from 'vue-i18n';
+import Nodes from './nodes.vue';
+import { getNodeName } from './utils';
+
+interface Props {
+	value?: Record<string, any> | string;
+	disabled?: boolean;
+	collectionName?: string;
+	collectionField?: string;
+	collectionRequired?: boolean;
+
+	/**
+	 * Lock the interface to only allow configuring filters for the given fieldName
+	 */
+	fieldName?: string;
+
+	inline?: boolean;
+	includeValidation?: boolean;
+	includeRelations?: boolean;
+	relationalFieldSelectable?: boolean;
+	rawFieldNames?: boolean;
+}
+
+const props = withDefaults(defineProps<Props>(), {
+	value: undefined,
+	disabled: false,
+	collectionName: undefined,
+	collectionField: undefined,
+	collectionRequired: true,
+	fieldName: undefined,
+	inline: false,
+	includeValidation: false,
+	includeRelations: true,
+	relationalFieldSelectable: true,
+	rawFieldNames: false,
+});
+
+const emit = defineEmits(['input']);
+
+const { t } = useI18n();
+
+const menuEl = ref();
+
+const values = inject('values', ref<Record<string, any>>({}));
+
+const collection = computed(() => {
+	if (props.collectionName) return props.collectionName;
+	return values.value[props.collectionField!] ?? null;
+});
+
+const fieldsStore = useFieldsStore();
+const relationsStore = useRelationsStore();
+
+const innerValue = computed<Filter[]>({
+	get() {
+		const filterValue = typeof props.value === 'string' ? parseJSON(props.value) : props.value;
+
+		if (!filterValue || isEmpty(filterValue)) return [];
+
+		const name = getNodeName(filterValue);
+
+		if (name === '_and') {
+			return cloneDeep(filterValue['_and']);
+		} else {
+			return cloneDeep([filterValue]);
+		}
+	},
+	set(newVal) {
+		if (newVal.length === 0) {
+			emit('input', null);
+		} else {
+			emit('input', { _and: newVal });
+		}
+	},
+});
+
+function emitValue() {
+	if (innerValue.value.length === 0) {
+		emit('input', null);
+	} else {
+		emit('input', { _and: innerValue.value });
+	}
+}
+
+function addNode(key: string) {
+	if (key === '$group') {
+		innerValue.value = innerValue.value.concat({ _and: [] });
+	} else {
+		let type: Type;
+		const field = fieldsStore.getField(collection.value, key);
+
+		if (key.includes('(') && key.includes(')')) {
+			const functionName = key.split('(')[0] as FieldFunction;
+			type = getOutputTypeForFunction(functionName);
+			key = parseFilterFunctionPath(key);
+		} else {
+			type = field?.type || 'unknown';
+
+			// Alias uses the foreign key type
+			if (type === 'alias') {
+				const relations = relationsStore.getRelationsForField(collection.value, key);
+
+				if (relations[0]) {
+					type = fieldsStore.getField(relations[0].collection, relations[0].field)?.type || 'unknown';
+				}
+			}
+		}
+
+		const filterOperators = getFilterOperatorsForType(type, { includeValidation: props.includeValidation });
+		const operator = field?.meta?.options?.choices && filterOperators.includes('eq') ? 'eq' : filterOperators[0];
+		const node = set({}, key, { ['_' + operator]: null });
+		innerValue.value = innerValue.value.concat(node);
+	}
+}
+
+function removeNode(ids: string[]) {
+	const id = ids.pop();
+
+	if (ids.length === 0) {
+		innerValue.value = innerValue.value.filter((node, index) => index !== Number(id));
+		return;
+	}
+
+	let list = get(innerValue.value, ids.join('.')) as Filter[];
+
+	list = list.filter((_node, index) => index !== Number(id));
+
+	innerValue.value = set(innerValue.value, ids.join('.'), list);
+}
+
+// For adding any new fields (eg. flow Validate operation rule)
+const newKey = ref<string | null>(null);
+
+function addKeyAsNode() {
+	if (!newKey.value) return;
+	if (menuEl.value) menuEl.value.deactivate();
+	addNode(newKey.value);
+	newKey.value = null;
+}
+</script>
+
 <template>
 	<v-notice v-if="collectionRequired && !collectionField && !collection" type="warning">
 		{{ t('collection_field_not_setup') }}
@@ -7,7 +160,7 @@
 	</v-notice>
 
 	<div v-else class="system-filter" :class="{ inline, empty: innerValue.length === 0, field: fieldName !== undefined }">
-		<v-list :mandatory="true">
+		<v-list mandatory>
 			<div v-if="innerValue.length === 0" class="no-rules">
 				{{ t('interfaces.filter.no_rules') }}
 			</div>
@@ -20,6 +173,8 @@
 				:depth="1"
 				:include-validation="includeValidation"
 				:include-relations="includeRelations"
+				:relational-field-selectable="relationalFieldSelectable"
+				:raw-field-names="rawFieldNames"
 				@remove-node="removeNode($event)"
 				@change="emitValue"
 			/>
@@ -44,7 +199,10 @@
 					:collection="collection"
 					include-functions
 					:include-relations="includeRelations"
-					@select-field="addNode($event)"
+					:relational-field-selectable="relationalFieldSelectable"
+					:allow-select-all="false"
+					:raw-field-names="rawFieldNames"
+					@add="addNode($event[0])"
 				>
 					<template #prepend>
 						<v-list-item clickable @click="addNode('$group')">
@@ -78,130 +236,6 @@
 		</div>
 	</div>
 </template>
-
-<script lang="ts" setup>
-import { useFieldsStore } from '@/stores/fields';
-import { Filter, Type, FieldFunction } from '@directus/shared/types';
-import { getFilterOperatorsForType, getOutputTypeForFunction } from '@directus/shared/utils';
-import { cloneDeep, get, isEmpty, set } from 'lodash';
-import { computed, inject, ref } from 'vue';
-import { useI18n } from 'vue-i18n';
-import Nodes from './nodes.vue';
-import { getNodeName } from './utils';
-
-interface Props {
-	value?: Record<string, any>;
-	disabled?: boolean;
-	collectionName?: string;
-	collectionField?: string;
-	collectionRequired?: boolean;
-	fieldName?: string;
-	inline?: boolean;
-	includeValidation?: boolean;
-	includeRelations?: boolean;
-}
-
-const props = withDefaults(defineProps<Props>(), {
-	value: undefined,
-	disabled: false,
-	collectionName: undefined,
-	collectionField: undefined,
-	collectionRequired: true,
-	fieldName: undefined,
-	inline: false,
-	includeValidation: false,
-	includeRelations: true,
-});
-
-const emit = defineEmits(['input']);
-
-const { t } = useI18n();
-
-const menuEl = ref();
-
-const values = inject('values', ref<Record<string, any>>({}));
-
-const collection = computed(() => {
-	if (props.collectionName) return props.collectionName;
-	return values.value[props.collectionField] ?? null;
-});
-
-const fieldsStore = useFieldsStore();
-
-const innerValue = computed<Filter[]>({
-	get() {
-		if (!props.value || isEmpty(props.value)) return [];
-
-		const name = getNodeName(props.value);
-
-		if (name === '_and') {
-			return cloneDeep(props.value['_and']);
-		} else {
-			return cloneDeep([props.value]);
-		}
-	},
-	set(newVal) {
-		if (newVal.length === 0) {
-			emit('input', null);
-		} else {
-			emit('input', { _and: newVal });
-		}
-	},
-});
-
-function emitValue() {
-	if (innerValue.value.length === 0) {
-		emit('input', null);
-	} else {
-		emit('input', { _and: innerValue.value });
-	}
-}
-
-function addNode(key: string) {
-	if (key === '$group') {
-		innerValue.value = innerValue.value.concat({ _and: [] });
-	} else {
-		let type: Type;
-		const field = fieldsStore.getField(collection.value, key);
-
-		if (key.includes('(') && key.includes(')')) {
-			const functionName = key.split('(')[0] as FieldFunction;
-			type = getOutputTypeForFunction(functionName);
-		} else {
-			type = field?.type || 'unknown';
-		}
-		let filterOperators = getFilterOperatorsForType(type, { includeValidation: props.includeValidation });
-		const operator = field?.meta?.options?.choices && filterOperators.includes('eq') ? 'eq' : filterOperators[0];
-		const node = set({}, key, { ['_' + operator]: null });
-		innerValue.value = innerValue.value.concat(node);
-	}
-}
-
-function removeNode(ids: string[]) {
-	const id = ids.pop();
-
-	if (ids.length === 0) {
-		innerValue.value = innerValue.value.filter((node, index) => index !== Number(id));
-		return;
-	}
-
-	let list = get(innerValue.value, ids.join('.')) as Filter[];
-
-	list = list.filter((_node, index) => index !== Number(id));
-
-	innerValue.value = set(innerValue.value, ids.join('.'), list);
-}
-
-// For adding any new fields (eg. flow Validate operation rule)
-const newKey = ref<string | null>(null);
-
-function addKeyAsNode() {
-	if (!newKey.value) return;
-	if (menuEl.value) menuEl.value.deactivate();
-	addNode(newKey.value);
-	newKey.value = null;
-}
-</script>
 
 <style lang="scss" scoped>
 .system-filter {
@@ -244,13 +278,13 @@ function addKeyAsNode() {
 		}
 
 		.no-rules {
-			color: var(--foreground-subdued);
-			font-family: var(--family-monospace);
+			color: var(--theme--form--field--input--foreground-subdued);
+			font-family: var(--theme--font-family-monospace);
 		}
 	}
 
 	.add-filter {
-		color: var(--primary);
+		color: var(--theme--primary);
 	}
 
 	&.inline {
@@ -275,8 +309,8 @@ function addKeyAsNode() {
 			width: 100%;
 			height: 30px;
 			padding: 0;
-			color: var(--foreground-subdued);
-			background-color: var(--background-page);
+			color: var(--theme--form--field--input--foreground-subdued);
+			background-color: var(--theme--background);
 			border: var(--border-width) solid var(--border-subdued);
 			border-radius: 100px;
 			transition: border-color var(--fast) var(--transition);
@@ -305,7 +339,7 @@ function addKeyAsNode() {
 
 .field .buttons {
 	button {
-		color: var(--primary);
+		color: var(--theme--primary);
 		display: inline-block;
 		cursor: pointer;
 	}

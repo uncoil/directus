@@ -1,3 +1,63 @@
+<script setup lang="ts">
+import { useCollectionsStore } from '@/stores/collections';
+import { useFieldsStore } from '@/stores/fields';
+import { useRelationsStore } from '@/stores/relations';
+import { orderBy } from 'lodash';
+import { storeToRefs } from 'pinia';
+import { computed } from 'vue';
+import { useI18n } from 'vue-i18n';
+import RelatedCollectionSelect from '../shared/related-collection-select.vue';
+import RelatedFieldSelect from '../shared/related-field-select.vue';
+import { syncFieldDetailStoreProperty, useFieldDetailStore } from '../store';
+
+const { t } = useI18n();
+
+const fieldDetailStore = useFieldDetailStore();
+const collectionsStore = useCollectionsStore();
+const relationsStore = useRelationsStore();
+const fieldsStore = useFieldsStore();
+
+const { collection, editing, generationInfo } = storeToRefs(fieldDetailStore);
+
+const autoGenerateJunctionRelation = syncFieldDetailStoreProperty('autoGenerateJunctionRelation');
+const junctionCollection = syncFieldDetailStoreProperty('relations.o2m.collection');
+const junctionFieldCurrent = syncFieldDetailStoreProperty('relations.o2m.field');
+const junctionFieldRelated = syncFieldDetailStoreProperty('relations.m2o.field');
+const oneCollectionField = syncFieldDetailStoreProperty('relations.m2o.meta.one_collection_field');
+const oneAllowedCollections = syncFieldDetailStoreProperty('relations.m2o.meta.one_allowed_collections', []);
+const sortField = syncFieldDetailStoreProperty('relations.o2m.meta.sort_field');
+const onDelete = syncFieldDetailStoreProperty('relations.o2m.schema.on_delete');
+const onDeselect = syncFieldDetailStoreProperty('relations.o2m.meta.one_deselect_action');
+
+const isExisting = computed(() => editing.value !== '+');
+const currentPrimaryKey = computed(() => fieldsStore.getPrimaryKeyFieldForCollection(collection.value!)?.field);
+
+const availableCollections = computed(() => {
+	return [
+		...orderBy(collectionsStore.databaseCollections, ['collection'], ['asc']),
+		{
+			divider: true,
+		},
+		{
+			collection: t('system'),
+			selectable: false,
+			children: orderBy(collectionsStore.crudSafeSystemCollections, ['collection'], ['asc']),
+		},
+	];
+});
+
+const unsortableJunctionFields = computed(() => {
+	const fields = ['item', 'collection'];
+
+	if (junctionCollection.value) {
+		const relations = relationsStore.getRelationsForCollection(junctionCollection.value);
+		fields.push(...relations.map((field) => field.field));
+	}
+
+	return fields;
+});
+</script>
+
 <template>
 	<div>
 		<div class="grid">
@@ -21,10 +81,10 @@
 					:placeholder="t('collection') + '...'"
 					:items="availableCollections"
 					item-value="collection"
-					item-text="name"
+					item-text="collection"
+					item-label-font-family="var(--theme--font-family-monospace)"
 					item-disabled="meta.singleton"
 					multiple
-					:is-menu-same-width="false"
 					:multiple-preview-threshold="0"
 				/>
 			</div>
@@ -57,8 +117,8 @@
 			<div class="spacer" />
 			<v-checkbox v-if="!isExisting" v-model="autoGenerateJunctionRelation" block :label="t('auto_fill')" />
 			<v-icon class="arrow" name="arrow_forward" />
-			<v-icon class="arrow" name="arrow_backward" />
-			<v-icon class="arrow" name="arrow_backward" />
+			<v-icon class="arrow" name="arrow_back" />
+			<v-icon class="arrow" name="arrow_back" />
 		</div>
 
 		<div class="sort-field">
@@ -69,7 +129,7 @@
 				:disabled-fields="unsortableJunctionFields"
 				:collection="junctionCollection"
 				:placeholder="t('add_sort_field')"
-				:nullable="true"
+				nullable
 			/>
 		</div>
 
@@ -130,7 +190,7 @@
 						},
 						{
 							text: t('referential_action_cascade', {
-								collection: (oneAllowedCollections ?? []).join(' / '),
+								collection: junctionCollection,
 								field: junctionFieldRelated,
 							}),
 							value: 'delete',
@@ -153,98 +213,12 @@
 	</div>
 </template>
 
-<script lang="ts">
-import { useI18n } from 'vue-i18n';
-import { defineComponent, computed } from 'vue';
-import { useFieldDetailStore, syncFieldDetailStoreProperty } from '../store';
-import { storeToRefs } from 'pinia';
-import RelatedCollectionSelect from '../shared/related-collection-select.vue';
-import RelatedFieldSelect from '../shared/related-field-select.vue';
-import { useFieldsStore } from '@/stores/fields';
-import { useCollectionsStore } from '@/stores/collections';
-import { useRelationsStore } from '@/stores/relations';
-import { orderBy } from 'lodash';
-
-export default defineComponent({
-	components: { RelatedCollectionSelect, RelatedFieldSelect },
-	setup() {
-		const { t } = useI18n();
-
-		const fieldDetailStore = useFieldDetailStore();
-		const collectionsStore = useCollectionsStore();
-		const relationsStore = useRelationsStore();
-		const fieldsStore = useFieldsStore();
-
-		const { collection, editing, generationInfo } = storeToRefs(fieldDetailStore);
-
-		const autoGenerateJunctionRelation = syncFieldDetailStoreProperty('autoGenerateJunctionRelation');
-		const junctionCollection = syncFieldDetailStoreProperty('relations.o2m.collection');
-		const junctionFieldCurrent = syncFieldDetailStoreProperty('relations.o2m.field');
-		const junctionFieldRelated = syncFieldDetailStoreProperty('relations.m2o.field');
-		const oneCollectionField = syncFieldDetailStoreProperty('relations.m2o.meta.one_collection_field');
-		const oneAllowedCollections = syncFieldDetailStoreProperty('relations.m2o.meta.one_allowed_collections', []);
-		const sortField = syncFieldDetailStoreProperty('relations.o2m.meta.sort_field');
-		const onDelete = syncFieldDetailStoreProperty('relations.o2m.schema.on_delete');
-		const onDeselect = syncFieldDetailStoreProperty('relations.o2m.meta.one_deselect_action');
-
-		const isExisting = computed(() => editing.value !== '+');
-		const currentPrimaryKey = computed(() => fieldsStore.getPrimaryKeyFieldForCollection(collection.value!)?.field);
-
-		const availableCollections = computed(() => {
-			return orderBy(
-				[
-					...collectionsStore.databaseCollections,
-					{
-						divider: true,
-					},
-					{
-						name: t('system'),
-						selectable: false,
-						children: collectionsStore.crudSafeSystemCollections,
-					},
-				],
-				['collection'],
-				['asc']
-			);
-		});
-
-		const unsortableJunctionFields = computed(() => {
-			let fields = ['item', 'collection'];
-			if (junctionCollection.value) {
-				const relations = relationsStore.getRelationsForCollection(junctionCollection.value);
-				fields.push(...relations.map((field) => field.field));
-			}
-			return fields;
-		});
-
-		return {
-			t,
-			availableCollections,
-			generationInfo,
-			collection,
-			isExisting,
-			autoGenerateJunctionRelation,
-			junctionCollection,
-			oneAllowedCollections,
-			currentPrimaryKey,
-			junctionFieldCurrent,
-			junctionFieldRelated,
-			oneCollectionField,
-			sortField,
-			onDelete,
-			onDeselect,
-			unsortableJunctionFields,
-		};
-	},
-});
-</script>
-
 <style lang="scss" scoped>
 @import '@/styles/mixins/form-grid';
 
 .grid {
-	--v-select-font-family: var(--family-monospace);
-	--v-input-font-family: var(--family-monospace);
+	--v-select-font-family: var(--theme--font-family-monospace);
+	--v-input-font-family: var(--theme--font-family-monospace);
 
 	position: relative;
 	display: grid;
@@ -253,7 +227,7 @@ export default defineComponent({
 	margin-top: 48px;
 
 	.v-icon.arrow {
-		--v-icon-color: var(--primary);
+		--v-icon-color: var(--theme--primary);
 
 		position: absolute;
 		transform: translateX(-50%);
@@ -277,7 +251,7 @@ export default defineComponent({
 }
 
 .v-input.matches {
-	--v-input-color: var(--primary);
+	--v-input-color: var(--theme--primary);
 }
 
 .type-label {
@@ -285,7 +259,7 @@ export default defineComponent({
 }
 
 .v-list {
-	--v-list-item-content-font-family: var(--family-monospace);
+	--v-list-item-content-font-family: var(--theme--font-family-monospace);
 }
 
 .v-notice {
@@ -301,7 +275,7 @@ export default defineComponent({
 	}
 
 	.field-name {
-		font-family: var(--family-monospace);
+		font-family: var(--theme--font-family-monospace);
 	}
 }
 
@@ -310,8 +284,8 @@ export default defineComponent({
 	grid-column: 3;
 	padding: var(--input-padding);
 	overflow: auto;
-	color: var(--foreground-subdued);
-	font-family: var(--family-monospace);
+	color: var(--theme--foreground-subdued);
+	font-family: var(--theme--font-family-monospace);
 	background-color: var(--background-subdued);
 	border: var(--border-width) solid var(--border-normal);
 	border-radius: var(--border-radius);
@@ -322,7 +296,7 @@ export default defineComponent({
 }
 
 .sort-field {
-	--v-input-font-family: var(--family-monospace);
+	--v-input-font-family: var(--theme--font-family-monospace);
 
 	.v-divider {
 		margin-top: 48px;

@@ -1,45 +1,3 @@
-<template>
-	<v-list-group v-if="visibleChildrenValues.length > 0" v-show="groupShown" :value="value" arrow-placement="before">
-		<template #activator>
-			<v-checkbox
-				v-model="treeValue"
-				:indeterminate="groupIndeterminateState"
-				:checked="groupCheckedStateOverride"
-				:label="text"
-				:value="value"
-				:disabled="disabled"
-			>
-				<v-highlight :text="text" :query="search" />
-			</v-checkbox>
-		</template>
-
-		<v-checkbox-tree-checkbox
-			v-for="choice in children"
-			:key="choice[itemValue]"
-			v-model="treeValue"
-			:value-combining="valueCombining"
-			:checked="childrenCheckedStateOverride"
-			:hidden="visibleChildrenValues.includes(choice[itemValue]) === false"
-			:search="search"
-			:item-text="itemText"
-			:item-value="itemValue"
-			:item-children="itemChildren"
-			:text="choice[itemText]"
-			:value="choice[itemValue]"
-			:children="choice[itemChildren]"
-			:disabled="disabled"
-			:show-selection-only="showSelectionOnly"
-			:parent-value="value"
-		/>
-	</v-list-group>
-
-	<v-list-item v-else-if="!hidden" class="item">
-		<v-checkbox v-model="treeValue" :disabled="disabled" :checked="checked" :label="text" :value="value">
-			<v-highlight :text="text" :query="search" />
-		</v-checkbox>
-	</v-list-item>
-</template>
-
 <script lang="ts">
 export default {
 	name: 'VCheckboxTreeCheckbox',
@@ -112,7 +70,7 @@ const groupShown = computed(() => {
 	return !props.hidden;
 });
 
-const childrenValues = computed(() => props.children?.map((child) => child[props.itemValue]) || []);
+const childrenValues = computed(() => props.children.map((child) => child[props.itemValue]));
 
 const treeValue = computed({
 	get() {
@@ -122,7 +80,7 @@ const treeValue = computed({
 		const added = difference(newValue, props.modelValue);
 		const removed = difference(props.modelValue, newValue);
 
-		if (props.children) {
+		if (Array.isArray(props.children) && props.children.length > 0) {
 			switch (props.valueCombining) {
 				case 'all':
 					return emitAll(newValue, { added, removed });
@@ -264,7 +222,7 @@ function emitBranch(rawValue: (string | number)[], { added, removed }: Delta) {
 
 		const newValue = [
 			...rawValue.filter((val) => val !== props.value),
-			...(props.children || [])
+			...props.children
 				.filter((child) => {
 					if (!child[props.itemChildren]) return true;
 					return child[props.itemValue] !== childThatContainsSelection?.[props.itemValue];
@@ -423,6 +381,48 @@ function getRecursiveChildrenValues(mode: 'all' | 'branch' | 'leaf', children: R
 	}
 }
 </script>
+
+<template>
+	<v-list-group v-if="visibleChildrenValues.length > 0" v-show="groupShown" :value="value" arrow-placement="before">
+		<template #activator>
+			<v-checkbox
+				v-model="treeValue"
+				:indeterminate="groupIndeterminateState"
+				:checked="groupCheckedStateOverride"
+				:label="text"
+				:value="value"
+				:disabled="disabled"
+			>
+				<v-highlight :text="text" :query="search" />
+			</v-checkbox>
+		</template>
+
+		<v-checkbox-tree-checkbox
+			v-for="choice in children"
+			:key="choice[itemValue]"
+			v-model="treeValue"
+			:value-combining="valueCombining"
+			:checked="childrenCheckedStateOverride"
+			:hidden="visibleChildrenValues.includes(choice[itemValue]) === false"
+			:search="search"
+			:item-text="itemText"
+			:item-value="itemValue"
+			:item-children="itemChildren"
+			:text="choice[itemText]"
+			:value="choice[itemValue]"
+			:children="choice[itemChildren]"
+			:disabled="disabled"
+			:show-selection-only="showSelectionOnly"
+			:parent-value="value"
+		/>
+	</v-list-group>
+
+	<v-list-item v-else-if="!hidden" class="item">
+		<v-checkbox v-model="treeValue" :disabled="disabled" :checked="checked" :label="text" :value="value">
+			<v-highlight :text="text" :query="search" />
+		</v-checkbox>
+	</v-list-item>
+</template>
 
 <style scoped>
 .item {

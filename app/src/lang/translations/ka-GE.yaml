@@ -52,7 +52,6 @@ fields:
     title: სათაური
     description: აღწერა
     tags: იარლიყები
-    theme: ვიზუალური თემა
     tfa_secret: ორფაქტორიანი იდენტიფიკაცია
     status: სტატუსი
     role: როლი
@@ -93,3 +92,5 @@ layouts:
   tabular:
     comfortable: კომფორტული
     compact: კომპაქტური
+both: ორივე
+compact: კომპაქტური

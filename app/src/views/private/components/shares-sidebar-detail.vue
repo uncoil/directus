@@ -1,3 +1,154 @@
+<script setup lang="ts">
+import { useI18n } from 'vue-i18n';
+import { computed, ref } from 'vue';
+import { getRootPath } from '@/utils/get-root-path';
+import { unexpectedError } from '@/utils/unexpected-error';
+import { Share } from '@directus/types';
+import { useClipboard } from '@/composables/use-clipboard';
+
+import api from '@/api';
+import ShareItem from './share-item.vue';
+import DrawerItem from '@/views/private/components/drawer-item.vue';
+
+const props = defineProps<{
+	collection: string;
+	primaryKey: string | number;
+	allowed: boolean;
+}>();
+
+const { t } = useI18n();
+
+const { copyToClipboard } = useClipboard();
+
+const shares = ref<Share[] | null>([]);
+const count = ref(0);
+const error = ref(null);
+const loading = ref(false);
+const deleting = ref(false);
+const shareToEdit = ref<string | null>(null);
+const shareToSend = ref<Share | null>(null);
+const shareToDelete = ref<Share | null>(null);
+const sending = ref(false);
+const sendEmails = ref('');
+
+const sendPublicLink = computed(() => {
+	if (!shareToSend.value) return null;
+	return window.location.origin + getRootPath() + 'admin/shared/' + shareToSend.value.id;
+});
+
+refresh();
+
+async function input(data: any) {
+	if (!data) return;
+
+	data.collection = props.collection;
+	data.item = props.primaryKey;
+
+	try {
+		if (shareToEdit.value === '+') {
+			await api.post('/shares', data);
+		} else {
+			await api.patch(`/shares/${shareToEdit.value}`, data);
+		}
+
+		await refresh();
+
+		shareToEdit.value = null;
+	} catch (error: any) {
+		unexpectedError(error);
+	}
+}
+
+async function copy(id: string) {
+	const url = window.location.origin + getRootPath() + 'admin/shared/' + id;
+	await copyToClipboard(url, { success: t('share_copy_link_success'), fail: t('share_copy_link_error') });
+}
+
+function select(id: string) {
+	shareToEdit.value = id;
+}
+
+function unselect() {
+	shareToEdit.value = null;
+}
+
+async function refresh() {
+	error.value = null;
+	loading.value = true;
+
+	try {
+		const response = await api.get(`/shares`, {
+			params: {
+				filter: {
+					_and: [
+						{
+							collection: {
+								_eq: props.collection,
+							},
+						},
+						{
+							item: {
+								_eq: props.primaryKey,
+							},
+						},
+					],
+				},
+				sort: 'name',
+			},
+		});
+
+		count.value = response.data.data.length;
+		shares.value = response.data.data;
+	} catch (error: any) {
+		error.value = error;
+	} finally {
+		loading.value = false;
+	}
+}
+
+async function remove() {
+	if (!shareToDelete.value) return;
+
+	deleting.value = true;
+
+	try {
+		await api.delete(`/shares/${shareToDelete.value.id}`);
+		await refresh();
+		shareToDelete.value = null;
+	} catch (err: any) {
+		unexpectedError(err);
+	} finally {
+		deleting.value = false;
+	}
+}
+
+async function send() {
+	if (!shareToSend.value) return;
+
+	sending.value = true;
+
+	try {
+		const emailsParsed = sendEmails.value
+			.split(/,|\n/)
+			.filter((e) => e)
+			.map((email) => email.trim());
+
+		await api.post('/shares/invite', {
+			emails: emailsParsed,
+			share: shareToSend.value.id,
+		});
+
+		sendEmails.value = '';
+
+		shareToSend.value = null;
+	} catch (err: any) {
+		unexpectedError(err);
+	} finally {
+		sending.value = false;
+	}
+}
+</script>
+
 <template>
 	<sidebar-detail :title="t('shares')" icon="share" :badge="count">
 		<v-notice v-if="error" type="danger">{{ t('unexpected_error') }}</v-notice>
@@ -74,196 +225,11 @@
 	</sidebar-detail>
 </template>
 
-<script lang="ts">
-import { useI18n } from 'vue-i18n';
-import { defineComponent, ref, computed } from 'vue';
-import DrawerItem from '@/views/private/components/drawer-item.vue';
-import { getRootPath } from '@/utils/get-root-path';
-import { unexpectedError } from '@/utils/unexpected-error';
-import { Share } from '@directus/shared/types';
-import { useClipboard } from '@/composables/use-clipboard';
-
-import api from '@/api';
-import ShareItem from './share-item.vue';
-
-export default defineComponent({
-	components: { ShareItem, DrawerItem },
-	props: {
-		collection: {
-			type: String,
-			required: true,
-		},
-		primaryKey: {
-			type: [String, Number],
-			required: true,
-		},
-		allowed: {
-			type: Boolean,
-			required: true,
-		},
-	},
-	setup(props) {
-		const { t } = useI18n();
-
-		const { copyToClipboard } = useClipboard();
-
-		const shares = ref<Share[] | null>(null);
-		const count = ref(0);
-		const error = ref(null);
-		const loading = ref(false);
-		const deleting = ref(false);
-		const shareToEdit = ref<string | null>(null);
-		const shareToSend = ref<Share | null>(null);
-		const shareToDelete = ref<Share | null>(null);
-		const sending = ref(false);
-		const sendEmails = ref('');
-
-		const sendPublicLink = computed(() => {
-			if (!shareToSend.value) return null;
-			return window.location.origin + getRootPath() + 'admin/shared/' + shareToSend.value.id;
-		});
-
-		refresh();
-
-		return {
-			shareToDelete,
-			t,
-			shares,
-			loading,
-			error,
-			refresh,
-			count,
-			select,
-			unselect,
-			shareToEdit,
-			input,
-			copy,
-			shareToSend,
-			remove,
-			deleting,
-			sendPublicLink,
-			send,
-			sending,
-			sendEmails,
-		};
-
-		async function input(data: any) {
-			if (!data) return;
-
-			data.collection = props.collection;
-			data.item = props.primaryKey;
-
-			try {
-				if (shareToEdit.value === '+') {
-					await api.post('/shares', data);
-				} else {
-					await api.patch(`/shares/${shareToEdit.value}`, data);
-				}
-
-				await refresh();
-
-				shareToEdit.value = null;
-			} catch (error: any) {
-				unexpectedError(error);
-			}
-		}
-
-		async function copy(id: string) {
-			const url = window.location.origin + getRootPath() + 'admin/shared/' + id;
-			await copyToClipboard(url, { success: t('share_copy_link_success'), fail: t('share_copy_link_error') });
-		}
-
-		function select(id: string) {
-			shareToEdit.value = id;
-		}
-
-		function unselect() {
-			shareToEdit.value = null;
-		}
-
-		async function refresh() {
-			error.value = null;
-			loading.value = true;
-
-			try {
-				const response = await api.get(`/shares`, {
-					params: {
-						filter: {
-							_and: [
-								{
-									collection: {
-										_eq: props.collection,
-									},
-								},
-								{
-									item: {
-										_eq: props.primaryKey,
-									},
-								},
-							],
-						},
-						sort: 'name',
-					},
-				});
-				count.value = response.data.data.length;
-				shares.value = response.data.data;
-			} catch (error: any) {
-				error.value = error;
-			} finally {
-				loading.value = false;
-			}
-		}
-
-		async function remove() {
-			if (!shareToDelete.value) return;
-
-			deleting.value = true;
-
-			try {
-				await api.delete(`/shares/${shareToDelete.value.id}`);
-				await refresh();
-				shareToDelete.value = null;
-			} catch (err: any) {
-				unexpectedError(err);
-			} finally {
-				deleting.value = false;
-			}
-		}
-
-		async function send() {
-			if (!shareToSend.value) return;
-
-			sending.value = true;
-
-			try {
-				const emailsParsed = sendEmails.value
-					.split(/,|\n/)
-					.filter((e) => e)
-					.map((email) => email.trim());
-
-				await api.post('/shares/invite', {
-					emails: emailsParsed,
-					share: shareToSend.value.id,
-				});
-
-				sendEmails.value = '';
-
-				shareToSend.value = null;
-			} catch (err: any) {
-				unexpectedError(err);
-			} finally {
-				sending.value = false;
-			}
-		}
-	},
-});
-</script>
-
 <style lang="scss" scoped>
 @import '@/styles/mixins/form-grid';
 
 .sidebar-detail {
-	--v-badge-background-color: var(--primary);
+	--v-badge-background-color: var(--theme--primary);
 }
 
 .v-progress-linear {
@@ -286,7 +252,7 @@ export default defineComponent({
 	margin-top: 16px;
 	margin-bottom: 16px;
 	margin-left: 2px;
-	color: var(--foreground-subdued);
+	color: var(--theme--foreground-subdued);
 	font-style: italic;
 }
 

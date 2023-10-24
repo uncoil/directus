@@ -1,4 +1,4 @@
-import { defineOperationApp } from '@directus/shared/utils';
+import { defineOperationApp } from '@directus/extensions';
 
 export default defineOperationApp({
 	id: 'item-create',

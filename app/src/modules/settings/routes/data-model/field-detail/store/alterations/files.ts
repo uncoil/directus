@@ -2,6 +2,7 @@ import { StateUpdates, State, HelperFunctions } from '../types';
 import { set } from 'lodash';
 import { useCollectionsStore } from '@/stores/collections';
 import { useFieldsStore } from '@/stores/fields';
+import { setRelatedOneFieldForCorrespondingField } from './m2m';
 
 export function applyChanges(updates: StateUpdates, state: State, helperFn: HelperFunctions) {
 	const { hasChanged } = helperFn;
@@ -35,6 +36,10 @@ export function applyChanges(updates: StateUpdates, state: State, helperFn: Help
 
 	if (hasChanged('relations.o2m.collection') || hasChanged('relations.m2o.collection')) {
 		matchJunctionCollectionName(updates);
+	}
+
+	if (hasChanged('fields.corresponding')) {
+		setRelatedOneFieldForCorrespondingField(updates);
 	}
 
 	if (
@@ -160,8 +165,10 @@ function generateFields(updates: StateUpdates, state: State, { getCurrent }: Hel
 	const junctionCurrent = getCurrent('relations.o2m.field');
 	const junctionRelated = getCurrent('relations.m2o.field');
 	const relatedCollection = getCurrent('relations.m2o.related_collection');
+
 	const relatedPrimaryKeyField =
 		fieldsStore.getPrimaryKeyFieldForCollection(relatedCollection) ?? getCurrent('collections.related.fields[0]');
+
 	const sort = getCurrent('relations.o2m.meta.sort_field');
 
 	if (junctionCollection && junctionCurrent && fieldExists(junctionCollection, junctionCurrent) === false) {
@@ -199,7 +206,7 @@ function generateFields(updates: StateUpdates, state: State, { getCurrent }: Hel
 			type: 'integer',
 			schema: {},
 			meta: {
-				hidden: false,
+				hidden: true,
 			},
 		});
 	} else {
@@ -213,6 +220,7 @@ export function setDefaults(updates: StateUpdates, state: State, { getCurrent }:
 	const fieldsStore = useFieldsStore();
 
 	const currentCollection = state.collection!;
+
 	const currentCollectionPrimaryKeyField =
 		fieldsStore.getPrimaryKeyFieldForCollection(currentCollection)?.field ?? 'id';
 

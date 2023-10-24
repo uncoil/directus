@@ -1,3 +1,8 @@
-node_modules
-dist
-packages/extensions-sdk/templates
+dist/
+/packages/extensions-sdk/templates/
+/api/extensions/
+!/app/.storybook/
+!/docs/.vitepress/
+!/docs/.typedocs/
+/docs/.vitepress/cache/
+/docs/.vitepress/dist/

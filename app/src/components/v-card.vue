@@ -1,9 +1,3 @@
-<template>
-	<div class="v-card" :class="{ disabled, tile }">
-		<slot />
-	</div>
-</template>
-
 <script setup lang="ts">
 interface Props {
 	/** Disables any interactions with the card */
@@ -17,6 +11,12 @@ withDefaults(defineProps<Props>(), {
 	tile: false,
 });
 </script>
+
+<template>
+	<div class="v-card" :class="{ disabled, tile }">
+		<slot />
+	</div>
+</template>
 
 <style>
 body {
@@ -42,6 +42,7 @@ body {
 	height: var(--v-card-height);
 	min-height: var(--v-card-min-height);
 	max-height: var(--v-card-max-height);
+	overflow: auto;
 
 	/* Page Content Spacing */
 	font-size: 15px;

@@ -1,10 +1,12 @@
 import { useRelationsStore } from '@/stores/relations';
 import { adjustFieldsForDisplays } from '@/utils/adjust-fields-for-displays';
+import { formatCollectionItemsCount } from '@/utils/format-collection-items-count';
+import { getItemRoute } from '@/utils/get-route';
 import { saveAsCSV } from '@/utils/save-as-csv';
 import { syncRefProperty } from '@/utils/sync-ref-property';
-import { formatCollectionItemsCount } from '@/utils/format-collection-items-count';
-import { useCollection, useItems, useSync } from '@directus/shared/composables';
-import { defineLayout, getFieldsFromTemplate } from '@directus/shared/utils';
+import { useCollection, useItems, useSync } from '@directus/composables';
+import { defineLayout } from '@directus/extensions';
+import { getFieldsFromTemplate } from '@directus/utils';
 import { clone } from 'lodash';
 import { computed, ref, toRefs } from 'vue';
 import CardsActions from './actions.vue';
@@ -17,6 +19,7 @@ export default defineLayout<LayoutOptions, LayoutQuery>({
 	name: '$t:layouts.cards.cards',
 	icon: 'grid_4',
 	component: CardsLayout,
+	headerShadow: false,
 	slots: {
 		options: CardsOptions,
 		sidebar: () => undefined,
@@ -52,14 +55,15 @@ export default defineLayout<LayoutOptions, LayoutQuery>({
 		const { size, icon, imageSource, title, subtitle, imageFit } = useLayoutOptions();
 		const { sort, limit, page, fields } = useLayoutQuery();
 
-		const { items, loading, error, totalPages, itemCount, totalCount, getItems } = useItems(collection, {
-			sort,
-			limit,
-			page,
-			fields,
-			filter,
-			search,
-		});
+		const { items, loading, error, totalPages, itemCount, totalCount, getItems, getTotalCount, getItemCount } =
+			useItems(collection, {
+				sort,
+				limit,
+				page,
+				fields,
+				filter,
+				search,
+			});
 
 		const showingCount = computed(() => {
 			const filtering = Boolean((itemCount.value || 0) < (totalCount.value || 0) && filterUser.value);
@@ -113,6 +117,8 @@ export default defineLayout<LayoutOptions, LayoutQuery>({
 
 		function refresh() {
 			getItems();
+			getTotalCount();
+			getItemCount();
 		}
 
 		function download() {
@@ -137,7 +143,7 @@ export default defineLayout<LayoutOptions, LayoutQuery>({
 			function createViewOption<T>(key: keyof LayoutOptions, defaultValue: any) {
 				return computed<T>({
 					get() {
-						return layoutOptions.value?.[key] !== undefined ? layoutOptions.value?.[key] : defaultValue;
+						return layoutOptions.value?.[key] !== undefined ? layoutOptions.value[key] : defaultValue;
 					},
 					set(newValue: T) {
 						layoutOptions.value = {
@@ -190,7 +196,8 @@ export default defineLayout<LayoutOptions, LayoutQuery>({
 
 		function getLinkForItem(item: Record<string, any>) {
 			if (!primaryKeyField.value) return;
-			return `/content/${props.collection}/${encodeURIComponent(item[primaryKeyField.value.field])}`;
+
+			return getItemRoute(props.collection, item[primaryKeyField.value.field]);
 		}
 
 		function selectAll() {

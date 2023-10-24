@@ -23,15 +23,20 @@ identifier: Identifier
 avatar: Avatar
 application: Aplikasi
 default_provider: Permintaan
+method: Kaedah
 published: Diterbitkan
 draft: Draf
 archived: Diarkibkan
 modules: Modul
 module_bar: Modul.bar
+logs: Log
+reset_width: Lebar set semula
 tile_size: Saiz jubin
 edit_field: Sunting halaman
 conditions: Syarat
 location: Lokasi
+condition_rules: Hukum syarat
+input: Input
 maps: Peta
 switch_user: Tukar pengguna
 item_creation: Pembuatan barang
@@ -44,6 +49,13 @@ group: Kumpulan
 export_items: Ekspot item
 and: Dan
 or: Atau
+init: Init
+dataset_too_large_currently_showing_n_items: Set data terlalu besar. Paparan semasa menunjukkan item {n} yang pertama.
+modifier: Pengubah suai
+extension_hook: Cangkuk
+extension_modules: Modul
+custom: Suai langgan
+hook: Cangkuk
 fill_width: Isi lebar
 field_name_translations: Terjemahan nama bidang
 enter_password_to_enable_tfa: Masukkan kata laluan anda untuk mengaktifkan pengesahan dua faktor
@@ -55,15 +67,20 @@ indeterminate: Tidak tentu arah
 edit_collection: Edit koleksi
 exclusive: Eksklusif
 children: Kanak-kanak
+db_only_click_to_configure: 'Pangkalan data sahaja: klik untuk konfigurasi'
 show_active_items: Tunjukkan item yang aktif
 show_archived_items: Tunjukkan item yang diarkibkan
 show_all_items: Tunjukkan semua item
 edited: Nilai diedit
 required: Diperlukan
+required_for_app_access: Diperlukan untuk akses app
+requires_value: Nilai diperlukan
 create_preset: Bina Pratetapan
 create_panel: Cipta Panel
 create_role: Buat Peranan
 create_user: Cipta Pengguna
+message: Mesej
+delete_panel: Panel hapus
 invite: Jemputan
 emails: Emel
 connection_excellent: Rangkaian bagus
@@ -97,7 +114,6 @@ title: Tajuk
 leave_comment: Tinggalkan komen...
 this_collection: Koleksi Ini
 related_collection: Koleksi Berkaitan
-checksum: Checksum
 name: Nama
 save_and_stay: Simpan dan Tetap Disini
 save_as_copy: Simpan sebagai Salinan
@@ -137,8 +153,8 @@ height: Tinggi
 wysiwyg_options:
   remove: Buang
 editing_in_batch: 'Menyunting Secara Kumpulan Sebanyak {count} Benda'
-settings_permissions: Peranan-peranan & Kebenaran
-settings_project: Tetapan Projek
+settings_project: Tetapan
+settings_presets: Penandabuku
 discard_changes: Buang Perubahan
 keep_editing: Terus Menyunting
 add_new: Tambah Baru
@@ -181,7 +197,6 @@ fields:
     title: Tajuk
     description: Penerangan
     tags: Tag
-    theme: Tema
     status: Status
     role: Peranan
   directus_settings:
@@ -260,6 +275,9 @@ interfaces:
     files: Fail-fail
   tags:
     tags: Tag
+  input-block-editor:
+    tools_options:
+      embed: Benamkan
 displays:
   collection:
     collection: Koleksi
@@ -280,3 +298,12 @@ layouts:
     title: Tajuk
   tabular:
     compact: Padat
+both: Kedua-duanya
+operations:
+  json-web-token:
+    options: Pilihan-pilihan
+  log:
+    message: Mesej
+  notification:
+    message: Mesej
+compact: Padat
